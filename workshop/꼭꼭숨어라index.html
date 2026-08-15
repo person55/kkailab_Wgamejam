@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>꼭꼭 숨어라</title>
+<style>
+  body{background:#0d1420;color:#e8e4d8;font-family:"Noto Serif KR",serif;max-width:38em;margin:40px auto;padding:0 20px;line-height:1.9}
+  h1{color:#d8b45a;letter-spacing:.2em;font-size:1.4rem;margin-bottom:1.2em}
+  .choice{display:block;margin:10px 0;padding:10px 16px;border:1px solid #2b3a4d;color:#d8b45a;cursor:pointer;background:none;width:100%;text-align:left;font:inherit}
+  .choice:hover{background:rgba(216,180,90,.1)}
+  .sound{color:#7f93a8;font-style:italic;margin-top:1.2em}
+  #clues{color:#9a9788;font-size:.85em;border-top:1px solid #2b3a4d;margin-top:30px;padding-top:10px;line-height:1.7}
+  .on{color:#d8b45a}
+  input,select{font:inherit;background:#16202e;color:#e8e4d8;border:1px solid #2b3a4d;padding:8px;width:100%;margin:10px 0}
+</style></head>
+<body>
+<h1 id="title"></h1><div id="text"></div><div id="choices"></div><div id="clues"></div>
+
+<script>
+/* ═══ 1. 게임 데이터 — 고치는 곳은 여기뿐 ═══ */
+
+const FRIENDS = ["향숙","창희","성빈","호진","혜연","인정","경환"];  // 호진이는 끝에 나타난다
+
+const GAME = {
+  title: "꼭꼭 숨어라",
+  start: "첫질문",
+  nodes: {
+
+    "첫질문": {
+      text: "너, 뭐 하고 있니?",
+      question: { options: ["그냥 그림 그려","친구들 기다려","몰라"],
+                  answer: "___아직없음___", to: "골목", wrongTo: "골목" }
+    },
+
+    /* ── 중심 ── */
+    "골목": {
+      text: "해가 밝다. 골목에 아무도 없다.\n나무 그림자가 길게 누워 있다.",
+      alt: { flag: "숫자", text: "골목으로 돌아왔다.\n그림자가 아까보다 짧아져 있다." },
+      sound: "아주 멀리서 누가 숫자를 센다.",
+      choices: [
+        { label: "바닥에 그린 선을 본다", to: "바닥의선" },
+        { label: "놀이터로 간다", to: "놀이터" },
+        { label: "꽃밭으로 간다", to: "꽃밭" },
+        { label: "계단을 오른다", to: "계단" },
+        { label: "이제 알겠다", to: "마지막질문", requires: ["숫자","발자국","숨바꼭질노래"], needFriends: 6 }
+      ]
+    },
+
+    "바닥의선": {
+      text: "의미 없는 선들이다.\n그런데 하나는 숫자를 쓰다 만 것 같다. 열 몇에서 끊겼다.",
+      gives: "숫자",
+      choices: [ { label: "일어선다", to: "골목" } ]
+    },
+
+    /* ── 놀이터 ── */
+    "놀이터": {
+      text: "빈 그네가 아직 흔들리고 있다.\n앉는 판에 성빈이가 새겨놓은 글자가 그대로다. 방금까지 누가 앉아 있었다.",
+      finds: "성빈",
+      sound: "숫자 세는 소리. 아까보다 조금 또렷하다.",
+      choices: [
+        { label: "미끄럼틀 뒤를 본다", to: "미끄럼틀" },
+        { label: "지하통로로 간다", to: "지하통로" },
+        { label: "골목으로 돌아간다", to: "골목" }
+      ]
+    },
+
+    "미끄럼틀": {
+      text: "아무도 없다.\n대신 머리핀 하나가 떨어져 있다. 향숙이 것이다.",
+      finds: "향숙",
+      choices: [ { label: "다시 나온다", to: "놀이터" } ]
+    },
+
+    "지하통로": {
+      text: "어른들이 가지 말라던 곳. 어둡고 축축하다.\n안쪽에서 웃음소리가 새어나왔다가 뚝 끊긴다. 창희 웃음소리다. 그 웃음은 아무도 못 흉내 낸다.",
+      finds: "창희",
+      sound: "여기서는 숫자 소리가 울린다. 어느 쪽에서 오는지 알 수 없다.",
+      choices: [
+        { label: "공사장 쪽으로 나간다", to: "공사장" },
+        { label: "놀이터로 돌아간다", to: "놀이터" }
+      ]
+    },
+
+    /* ── 공사장 · 산 ── */
+    "공사장": {
+      text: "들어가면 안 되는 곳.\n모래 위에 발자국이 어지럽다. 여러 명이 뛰어다닌 자국이다.\n쌓아둔 벽돌 뒤에서 뭔가 스치는 소리.",
+      sound: "숫자 세는 소리가 등 뒤에서 들린다. 돌아보면 아무도 없다.",
+      choices: [
+        { label: "벽돌 뒤를 본다", to: "벽돌뒤" },
+        { label: "산 쪽으로 올라간다", to: "산초입" },
+        { label: "지하통로로 돌아간다", to: "지하통로" }
+      ]
+    },
+
+    "벽돌뒤": {
+      text: "고양이가 튀어나가 사라진다.\n바닥에 딱지 몇 장이 흩어져 있다. 경환이가 늘 들고 다니던 것.",
+      finds: "경환",
+      choices: [ { label: "돌아선다", to: "공사장" } ]
+    },
+
+    "산초입": {
+      text: "넓은 산. 넓은 사람이 있다던 곳.\n아무도 없다.\n젖은 흙에 발자국이 남아 있는데, 전부 마을 쪽을 향해 있다.\n아무도 산으로 올라가지 않았다.",
+      gives: "발자국",
+      sound: "여기까지 와도 숫자 소리는 줄지 않는다. 오히려 마을 쪽에서 난다.",
+      choices: [ { label: "돌아선다", to: "공사장" } ]
+    },
+
+    /* ── 꽃밭 ── */
+    "꽃밭": {
+      text: "누가 밟고 지나간 자리가 길처럼 나 있다.\n꺾인 꽃대가 아직 물기를 머금었다.",
+      sound: "숫자 세는 소리가 여기서도 들린다.",
+      choices: [
+        { label: "밟힌 자리를 따라간다", to: "꽃밭안쪽" },
+        { label: "골목으로 돌아간다", to: "골목" }
+      ]
+    },
+
+    "꽃밭안쪽": {
+      text: "길이 끊긴다.\n실내화 한 짝이 놓여 있다. 안쪽에 이름이 적혀 있다. 혜연.\n누군가 여기서 신발을 벗고 뛰어간 것이다.",
+      finds: "혜연",
+      choices: [ { label: "돌아나온다", to: "꽃밭" } ]
+    },
+
+    /* ── 계단 · 옥상 ── */
+    "계단": {
+      text: "좁은 계단. 한 칸씩 오를 때마다 소리가 울린다.\n위에서 누가 뛰어가는 소리가 났다.\n난간에 인정이 가방이 걸려 있다. 저걸 두고 갈 애가 아닌데.",
+      finds: "인정",
+      sound: "계단을 오를수록 숫자 소리가 커진다.",
+      choices: [
+        { label: "옥상까지 오른다", to: "옥상" },
+        { label: "골목으로 내려간다", to: "골목" }
+      ]
+    },
+
+    "옥상": {
+      text: "동네가 다 내려다보인다. 놀이터도, 공사장도, 꽃밭도, 골목도.\n어디에도 아무도 없다.\n난간에 누가 부르다 만 노래가 분필로 적혀 있다.\n\n꼭꼭 숨어라\n머리카락 보일라",
+      gives: "숨바꼭질노래",
+      sound: "여기서는 숫자 소리가 아래에서 올라온다. 골목 쪽이다.",
+      choices: [ { label: "내려간다", to: "계단" } ]
+    },
+
+    /* ── 엔딩 ── */
+    "마지막질문": {
+      text: "골목으로 돌아왔다.\n숫자 세는 소리가 바로 여기서 난다.\n\n돌아서는데 호진이가 서 있다.\n어디에 있다가 나타난 건지 모르겠다.\n\n호진이가 묻는다.\n\"너, 뭐 하고 있었어?\"",
+      question: { options: ["그냥 그림 그려","친구들 기다려","술래"],
+                  answer: "술래", to: "기억엔딩", wrongTo: "골목엔딩" }
+    },
+
+    "기억엔딩": { text: "[정답 엔딩 — 아직 안 씀]", end: true },
+    "골목엔딩": { text: "[오답 엔딩 — 아직 안 씀]", end: true }
+  }
+};
+
+/* ═══ 2. 엔진 — 건드리지 않는다 ═══ */
+const flags = new Set();
+const found = new Set();
+
+function go(id){
+  const n = GAME.nodes[id]; if(!n){ alert("없는 노드: " + id); return; }
+  let text = n.text;
+  if(n.alt && flags.has(n.alt.flag)) text = n.alt.text;
+  if(n.gives) flags.add(n.gives);
+  if(n.finds) found.add(n.finds);
+
+  let html = text.replace(/\n/g,"<br>");
+  if(n.sound) html += '<div class="sound">' + n.sound + '</div>';
+  document.getElementById("text").innerHTML = html;
+
+  const c = document.getElementById("choices"); c.innerHTML = "";
+  if(n.question){
+    const q = n.question; let el;
+    if(q.input){ el = document.createElement("input"); }
+    else { el = document.createElement("select");
+      el.innerHTML = '<option value="">— 선택 —</option>' + q.options.map(o=>"<option>"+o+"</option>").join(""); }
+    const b = document.createElement("button"); b.className = "choice"; b.textContent = "대답한다";
+    b.onclick = () => go(el.value.trim() === q.answer ? q.to : q.wrongTo);
+    c.append(el, b);
+  } else {
+    (n.choices||[]).forEach(ch => {
+      if(ch.requires && !ch.requires.every(f=>flags.has(f))) return;
+      if(ch.needFriends && found.size < ch.needFriends) return;
+      const b = document.createElement("button"); b.className = "choice"; b.textContent = ch.label;
+      b.onclick = () => go(ch.to); c.appendChild(b);
+    });
+  }
+  if(n.end){
+    const b = document.createElement("button"); b.className = "choice"; b.textContent = "처음부터";
+    b.onclick = () => { flags.clear(); found.clear(); go(GAME.start); }; c.appendChild(b);
+  }
+
+  // 하단: 일곱 명 확인 현황 + 알게 된 것
+  const names = FRIENDS.map(f => found.has(f) ? '<span class="on">'+f+'</span>' : "·").join("  ");
+  const line2 = flags.size ? "<br>알게 된 것: " + [...flags].join(", ") : "";
+  document.getElementById("clues").innerHTML =
+    "여기 있었다: " + names + "  (" + found.size + "/7)" + line2;
+}
+document.getElementById("title").textContent = GAME.title;
+document.title = GAME.title;
+go(GAME.start);
+</script>
+</body></html>

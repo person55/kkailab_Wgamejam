@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>호수의 사건 — 논리니어 게임 템플릿</title>
+<!--
+═══════════════════════════════════════════════════════════════════
+  호수 옆 숲 — 논리니어 포인트앤클릭 템플릿 (해커톤용)
+═══════════════════════════════════════════════════════════════════
+
+  ◆ 이 파일 하나가 게임 전체입니다. 더블클릭하면 브라우저에서 실행됩니다.
+
+  ◆ 팀이 고칠 곳은 아래 "1. 게임 데이터" 섹션 하나뿐입니다.
+    그 아래 "2. 엔진"은 건드리지 않아도 됩니다.
+
+  ◆ 단축키 (제작 중에만 사용):
+      H  —  모든 클릭 영역(핫스팟)을 표시/숨김
+      E  —  편집 모드: 화면 위에서 마우스로 사각형을 드래그하면
+            핫스팟 좌표 { x, y, w, h } 가 화면에 표시됩니다.
+            그 숫자를 게임 데이터에 복사해 넣으세요.
+
+  ◆ 배경을 그림으로 바꾸려면:
+      background: "img/갈대밭.png"   ← 이 파일과 같은 폴더에 img 폴더를 만들고
+      그림 파일을 넣은 뒤 경로를 적으면 됩니다. (지금은 색 그라데이션이 임시 배경)
+
+  ◆ 팀 체크리스트 (이것만 바꾸면 여러분의 게임이 됩니다):
+      □ title / teamName / intro  — 제목과 도입부
+      □ scenes  — 장소 이름, 배경, 핫스팟(누가/무엇이 있고 뭐라고 말하는지)
+      □ clues   — 단서 목록 (3개 권장)
+      □ deduction — 마지막 추리 질문과 정답
+      □ ending  — 성공/실패 텍스트
+═══════════════════════════════════════════════════════════════════
+-->
+<style>
+  :root {
+    --ink: #e8e4d8;
+    --ink-dim: #9a9788;
+    --night: #0d1420;
+    --panel: #16202e;
+    --panel-edge: #2b3a4d;
+    --accent: #d8b45a;
+    --accent-dim: #8a7538;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--night);
+    color: var(--ink);
+    font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+  .screen { display: none; width: 100%; }
+  .screen.active { display: block; }
+
+  /* ── 타이틀 ── */
+  #screen-title {
+    text-align: center;
+    padding: 8vh 20px;
+    background:
+      radial-gradient(ellipse at 50% 100%, rgba(60,90,110,0.35), transparent 60%),
+      linear-gradient(180deg, #0a0f1a 0%, #101c2b 55%, #16283a 100%);
+    min-height: 100vh;
+  }
+  #screen-title h1 {
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    letter-spacing: 0.35em;
+    text-indent: 0.35em;
+    color: var(--accent);
+    margin-bottom: 0.4em;
+    text-shadow: 0 0 30px rgba(216,180,90,0.25);
+  }
+  #screen-title .subtitle { color: var(--ink-dim); letter-spacing: 0.2em; margin-bottom: 6vh; }
+  #screen-title .moon {
+    width: 90px; height: 90px; border-radius: 50%;
+    margin: 0 auto 5vh;
+    background: radial-gradient(circle at 35% 35%, #f5eeda, #cfc4a0 70%, #a89c78);
+    box-shadow: 0 0 60px 20px rgba(230,220,180,0.15);
+  }
+  .team-name { color: var(--ink-dim); font-size: 0.85rem; margin-top: 8vh; letter-spacing: 0.15em; }
+
+  button.big {
+    font-family: inherit;
+    font-size: 1.1rem;
+    letter-spacing: 0.3em; text-indent: 0.3em;
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid var(--accent-dim);
+    padding: 0.9em 2.6em;
+    cursor: pointer;
+    transition: background 0.25s, box-shadow 0.25s;
+  }
+  button.big:hover { background: rgba(216,180,90,0.12); box-shadow: 0 0 24px rgba(216,180,90,0.15); }
+
+  /* ── 인트로 ── */
+  #screen-intro { text-align: center; padding: 16vh 20px; min-height: 100vh; }
+  #intro-line {
+    font-size: clamp(1.1rem, 2.6vw, 1.5rem);
+    line-height: 2;
+    max-width: 34em; margin: 0 auto 8vh;
+    min-height: 6em;
+  }
+  .hint { color: var(--ink-dim); font-size: 0.85rem; letter-spacing: 0.1em; }
+
+  /* ── 공통 상단바 ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    max-width: 1100px; margin: 0 auto;
+    padding: 14px 18px;
+  }
+  .topbar .place { letter-spacing: 0.25em; color: var(--accent); }
+  .topbar .right { display: flex; gap: 10px; }
+  button.small {
+    font-family: inherit; font-size: 0.85rem;
+    color: var(--ink); background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    padding: 0.5em 1.1em; cursor: pointer; letter-spacing: 0.1em;
+  }
+  button.small:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+  /* ── 허브(지도) ── */
+  #screen-hub { min-height: 100vh; padding-bottom: 6vh; }
+  #hub-incident {
+    max-width: 40em; margin: 4vh auto 6vh; padding: 0 20px;
+    text-align: center; line-height: 1.9; color: var(--ink);
+  }
+  #hub-incident em { color: var(--accent); font-style: normal; }
+  .hub-cards {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    justify-content: center; max-width: 1000px; margin: 0 auto; padding: 0 20px;
+  }
+  .hub-card {
+    width: 260px; height: 170px;
+    border: 1px solid var(--panel-edge);
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: transform 0.25s, box-shadow 0.25s;
+  }
+  .hub-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.5); }
+  .hub-card .bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .hub-card .name {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 10px 14px;
+    background: linear-gradient(transparent, rgba(8,12,20,0.9));
+    letter-spacing: 0.2em; color: var(--ink);
+  }
+  .hub-card.visited::after {
+    content: "다녀옴"; position: absolute; top: 10px; right: 10px;
+    font-size: 0.7rem; color: var(--ink-dim);
+    border: 1px solid var(--panel-edge); background: rgba(8,12,20,0.7);
+    padding: 2px 8px; letter-spacing: 0.1em;
+  }
+  #hub-deduce-wrap { text-align: center; margin-top: 7vh; }
+
+  /* ── 장면 ── */
+  #screen-scene { min-height: 100vh; }
+  #stage-wrap { display: flex; justify-content: center; padding: 0 18px; }
+  #stage {
+    position: relative;
+    width: min(1060px, 96vw);
+    aspect-ratio: 16 / 9;
+    background-size: cover; background-position: center;
+    border: 1px solid var(--panel-edge);
+    overflow: hidden;
+    user-select: none;
+  }
+  .hotspot {
+    position: absolute;
+    cursor: pointer;
+    border: 1px dashed transparent;
+    border-radius: 4px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .hotspot:hover { border-color: rgba(216,180,90,0.7); background: rgba(216,180,90,0.08); }
+  body.show-hotspots .hotspot { border-color: rgba(216,180,90,0.5); background: rgba(216,180,90,0.06); }
+  body.show-hotspots .hotspot::after {
+    content: attr(data-label);
+    position: absolute; top: 2px; left: 4px;
+    font-size: 0.7rem; color: var(--accent);
+    text-shadow: 0 1px 3px #000;
+  }
+
+  /* 대사창 */
+  #textbox {
+    position: absolute; left: 3%; right: 3%; bottom: 4%;
+    background: rgba(10,15,24,0.92);
+    border: 1px solid var(--panel-edge);
+    padding: 18px 24px 22px;
+    line-height: 1.85;
+    cursor: pointer;
+    display: none;
+  }
+  #textbox.open { display: block; }
+  #textbox .speaker { color: var(--accent); letter-spacing: 0.15em; margin-bottom: 6px; font-size: 0.9rem; }
+  #textbox .continue { color: var(--ink-dim); font-size: 0.75rem; text-align: right; margin-top: 8px; }
+
+  /* ── 단서 수첩 ── */
+  #notebook {
+    position: fixed; top: 0; right: -360px; bottom: 0;
+    width: 340px; max-width: 88vw; background: var(--panel);
+    border-left: 1px solid var(--panel-edge);
+    padding: 26px 22px; z-index: 40;
+    transition: right 0.3s; overflow-y: auto;
+  }
+  #notebook.open { right: 0; }
+  #notebook h2 { letter-spacing: 0.25em; color: var(--accent); font-size: 1rem; margin-bottom: 20px; }
+  #notebook-close {
+    position: absolute; top: 14px; right: 14px;
+    width: 40px; height: 40px;
+    font-size: 1.5rem; line-height: 1;
+    color: var(--ink); background: transparent;
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    cursor: pointer;
+  }
+  #notebook-close:hover { color: var(--accent); border-color: var(--accent-dim); }
+  .clue-item { border-bottom: 1px solid var(--panel-edge); padding: 12px 2px; }
+  .clue-item .clue-name { color: var(--ink); margin-bottom: 4px; letter-spacing: 0.05em; }
+  .clue-item .clue-desc { color: var(--ink-dim); font-size: 0.88rem; line-height: 1.7; }
+  .clue-empty { color: var(--ink-dim); font-size: 0.9rem; line-height: 1.8; }
+
+  /* 토스트 */
+  #toast {
+    position: fixed; top: 24px; left: 50%; transform: translate(-50%, -10px);
+    background: rgba(10,15,24,0.95); border: 1px solid var(--accent-dim);
+    color: var(--accent); padding: 12px 26px; letter-spacing: 0.1em;
+    opacity: 0; pointer-events: none; transition: opacity 0.35s, transform 0.35s;
+    z-index: 60;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ── 추리 ── */
+  #screen-deduce { min-height: 100vh; padding-bottom: 8vh; }
+  #deduce-inner { max-width: 620px; margin: 0 auto; padding: 4vh 20px 0; }
+  #deduce-inner .lead { line-height: 1.9; margin-bottom: 5vh; text-align: center; }
+  .deduce-q { margin-bottom: 4vh; }
+  .deduce-q .q { color: var(--accent); letter-spacing: 0.08em; margin-bottom: 12px; }
+  .deduce-q select {
+    width: 100%; font-family: inherit; font-size: 1rem;
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--panel-edge); padding: 0.7em 0.9em;
+  }
+  #deduce-clue-note { color: var(--ink-dim); font-size: 0.85rem; text-align: center; margin-bottom: 4vh; line-height: 1.7; }
+  #deduce-submit-wrap { text-align: center; }
+  #deduce-fail {
+    display: none; margin-top: 4vh; text-align: center;
+    color: #c98a7a; line-height: 1.8;
+  }
+  #deduce-fail.show { display: block; }
+
+  /* ── 엔딩 ── */
+  #screen-end { text-align: center; padding: 14vh 20px; min-height: 100vh; }
+  #screen-end h2 { color: var(--accent); letter-spacing: 0.3em; text-indent: 0.3em; margin-bottom: 6vh; }
+  #end-text { max-width: 36em; margin: 0 auto 8vh; line-height: 2.1; text-align: left; white-space: pre-line; }
+
+  /* ── 편집 모드 ── */
+  #edit-panel {
+    display: none;
+    position: fixed; left: 20px; bottom: 20px; z-index: 80;
+    background: rgba(10,15,24,0.95); border: 1px solid var(--accent);
+    padding: 14px 18px; font-family: monospace; font-size: 0.9rem;
+    color: var(--accent); line-height: 1.7;
+  }
+  body.edit-mode #edit-panel { display: block; }
+  body.edit-mode .hotspot { pointer-events: none; }
+  #edit-rect {
+    position: absolute; border: 1px solid #ff6a5a; background: rgba(255,106,90,0.15);
+    display: none; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     1. 게임 데이터  —  팀이 고치는 곳은 여기뿐입니다
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+const GAME = {
+
+  title: "사라진 달빛 진주",
+  subtitle: "호수 옆 숲의 세 가지 이야기",
+  teamName: "팀 이름을 여기에",
+
+  // 타이틀 화면 배경 그림 (없으면 이 줄을 지우세요 — 기본 달 그래픽이 나옵니다)
+  titleBackground: "img/title.png",
+
+  // 타이틀 다음에 한 줄씩 나오는 도입부. 줄 수는 자유.
+  intro: [
+    "어젯밤, 짙은 안개가 호수를 덮었다.",
+    "아침이 밝았을 때, 수달 반디가 지키던 '달빛 진주'는 사라져 있었다.",
+    "물가에는 어지러운 흔적들. 그리고 서로 다른 이야기를 하는 목격자들.",
+    "진실은, 조각난 이야기들 사이 어딘가에 있다."
+  ],
+
+  // 허브(지도) 화면 위에 표시되는 사건 요약
+  incident: "달빛 진주가 사라졌다. 어디부터 조사할지는 <em>당신의 선택</em>이다 — 순서는 없다.",
+
+  // ── 단서 목록 ─────────────────────────────────────
+  // id 는 아래 scenes 의 givesClue 에서 사용하는 이름표입니다.
+  clues: [
+    { id: "clue-tracks",
+      name: "세 발가락 발자국",
+      desc: "물가 진흙의 발자국은 여우의 것이 아니라 새의 것. 숲 쪽으로 향하다가 사라졌다." },
+    { id: "clue-feather",
+      name: "물에 젖은 깃털",
+      desc: "참나무 아래에서 발견. 밤새 숲 반대편에 있었다는 올빼미의 말과 맞지 않는다." },
+    { id: "clue-witness",
+      name: "여우의 목격담",
+      desc: "그날 밤 올빼미가 호수 위를 낮게 날았다. 진주의 빛은 물고기를 불러모은다." }
+  ],
+
+  // ── 장면들 ─────────────────────────────────────
+  // background: 색 그라데이션(임시) 또는 "img/파일명.png"
+  // hotspot 좌표는 화면 기준 % 값. E 키 편집 모드로 쉽게 얻을 수 있습니다.
+  //   givesClue: 클릭하면 얻는 단서 id (없으면 생략)
+  //   alt: { clue, text, givesClue } — 특정 단서를 이미 갖고 있으면
+  //        대사가 바뀝니다. ★ 이것이 이 템플릿의 "비선형" 장치입니다.
+  scenes: [
+    {
+      id: "reeds",
+      name: "갈대밭",
+      background: "img/reeds.png",   // 임시 배경 예시: "linear-gradient(180deg, #1a2f42, #2c4038)"
+      hotspots: [
+        { x: 55, y: 15, w: 35, h: 65, label: "왜가리 회색깃",
+          speaker: "왜가리 회색깃",
+          text: "\"자정쯤이었나. 여우가 물가를 어슬렁거리는 걸 이 눈으로 똑똑히 봤어. 여우가 수상해. 늘 그렇듯이 말이야.\"" },
+        { x: 4, y: 62, w: 45, h: 34, label: "진흙 위의 흔적",
+          speaker: "진흙 위의 흔적",
+          text: "물가 진흙에 발자국이 찍혀 있다 — 발가락이 세 개다. 여우의 것이 아니라, 커다란 새의 발자국이다.",
+          givesClue: "clue-tracks" },
+        { x: 2, y: 8, w: 40, h: 46, label: "호수",
+          speaker: "호수",
+          text: "잔잔한 수면 위로 아침 안개가 걷히고 있다. 진주가 사라진 밤에는 달이 유난히 밝았다고 한다." }
+      ]
+    },
+    {
+      id: "oak",
+      name: "오래된 참나무",
+      background: "img/oak.png",
+      hotspots: [
+        { x: 33, y: 12, w: 14, h: 30, label: "올빼미 어스름",
+          speaker: "올빼미 어스름",
+          text: "\"난 밤새 숲 반대편에서 사냥 중이었단다. 호수 쪽엔 가지도 않았어. 늙은 눈이라, 본 것도 없고.\"",
+          alt: { clue: "clue-feather",
+                 text: "젖은 깃털을 보여주자, 올빼미는 한동안 말이 없다. \"…밤이 깊으면 말이다, 배고픔은 부끄러움보다 크단다.\"" } },
+        { x: 18, y: 66, w: 22, h: 24, label: "나무 밑동",
+          speaker: "나무 밑동",
+          text: "참나무 아래 커다란 깃털 하나가 떨어져 있다. 아직 축축하다 — 숲 반대편이 아니라, 호수의 물에 젖은 깃털이다.",
+          givesClue: "clue-feather" },
+        { x: 71, y: 8, w: 18, h: 18, label: "높은 가지",
+          speaker: "높은 가지",
+          text: "높은 가지 위에 올빼미의 둥지가 보인다. 안쪽에서 무언가 희미하게 빛나는 것 같기도 하다." }
+      ]
+    },
+    {
+      id: "trail",
+      name: "여우 굴 앞 숲길",
+      background: "img/trail.png",
+      hotspots: [
+        { x: 57, y: 46, w: 20, h: 32, label: "여우 붉은꼬리",
+          speaker: "여우 붉은꼬리",
+          text: "\"그래, 물가에 갔었어. 다들 날 의심하겠지. 하지만 난 이상한 물소리가 나서 보러 갔을 뿐이야. 아무도 내 말은 안 믿겠지만.\"",
+          alt: { clue: "clue-feather",
+                 text: "젖은 깃털을 보여주자 여우의 귀가 쫑긋 선다. \"…그거, 올빼미 깃털이잖아. 사실 그날 밤, 올빼미가 호수 위를 낮게 나는 걸 봤어. 달빛 진주가 빛나면 물고기들이 모여들거든. 사냥하기 딱 좋게.\"",
+                 givesClue: "clue-witness" } },
+        { x: 5, y: 74, w: 40, h: 24, label: "마른 흙길",
+          speaker: "마른 흙길",
+          text: "숲길의 흙은 말라 있다. 물가에서 이어지던 발자국은 이 근처에서 사라진다 — 마치 하늘로 날아오른 것처럼." },
+        { x: 76, y: 36, w: 10, h: 22, label: "여우 굴",
+          speaker: "여우 굴",
+          text: "굴 안은 어둡다. 낙엽 침대와 뼈다귀 몇 개뿐 — 진주 같은 것은 보이지 않는다." }
+      ]
+    }
+  ],
+
+  // ── 마지막 추리 ─────────────────────────────────────
+  deduction: {
+    lead: "조사한 것들을 떠올려 보자. 조각난 이야기들이 하나의 그림이 되는가?",
+    questions: [
+      { prompt: "달빛 진주를 가져간 것은 누구인가?",
+        options: ["왜가리 회색깃", "여우 붉은꼬리", "올빼미 어스름", "수달 반디 자신"],
+        answer: "올빼미 어스름" },
+      { prompt: "왜 그랬을까?",
+        options: ["진주를 자기 둥지에 장식하고 싶어서",
+                  "수달을 곤란하게 만들려고",
+                  "진주의 빛으로 물고기를 모아 사냥하려고",
+                  "왜가리의 부탁을 받아서"],
+        answer: "진주의 빛으로 물고기를 모아 사냥하려고" }
+    ],
+    failText: "조각이 아직 맞지 않는다. 누군가의 말과 물가의 흔적이 어긋나 있다. 숲을 더 조사해 보자."
+  },
+
+  // ── 엔딩 ─────────────────────────────────────
+  ending: {
+    title: "진실",
+    text: "참나무 둥지 깊은 곳에서, 달빛 진주가 발견되었다.\n\n올빼미 어스름은 고개를 숙였다. \"늙은 날개로는 더 이상 빠른 사냥감을 쫓을 수가 없었단다. 진주가 빛나면… 물고기들이 제 발로 모여들지.\"\n\n진주는 수달 반디에게 돌아갔다. 그리고 그날 저녁, 숲의 동물들은 올빼미의 몫의 물고기를 함께 나누기로 했다.\n\n왜가리는 여전히 여우를 의심스럽게 쳐다보았지만 — 그건 또 다른 이야기다."
+  }
+};
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     화면 구조 (고치지 않아도 됩니다)
+     ═══════════════════════════════════════════════════════════════ -->
+
+<div id="screen-title" class="screen active">
+  <div class="moon"></div>
+  <h1 id="t-title"></h1>
+  <div class="subtitle" id="t-subtitle"></div>
+  <button class="big" onclick="startIntro()">시 작</button>
+  <div class="team-name" id="t-team"></div>
+</div>
+
+<div id="screen-intro" class="screen" onclick="nextIntro()">
+  <p id="intro-line"></p>
+  <div class="hint">화면을 클릭하면 계속됩니다</div>
+</div>
+
+<div id="screen-hub" class="screen">
+  <div class="topbar">
+    <div class="place">호수 옆 숲</div>
+    <div class="right">
+      <button class="small" onclick="toggleNotebook()">단서 수첩 (<span class="clue-count">0</span>)</button>
+    </div>
+  </div>
+  <p id="hub-incident"></p>
+  <div class="hub-cards" id="hub-cards"></div>
+  <div id="hub-deduce-wrap">
+    <button class="big" onclick="showScreen('deduce'); renderDeduce()">추리한다</button>
+  </div>
+</div>
+
+<div id="screen-scene" class="screen">
+  <div class="topbar">
+    <div class="place" id="scene-name"></div>
+    <div class="right">
+      <button class="small" onclick="toggleNotebook()">단서 수첩 (<span class="clue-count">0</span>)</button>
+      <button class="small" onclick="showScreen('hub')">숲 지도로</button>
+    </div>
+  </div>
+  <div id="stage-wrap">
+    <div id="stage">
+      <div id="edit-rect"></div>
+      <div id="textbox" onclick="closeTextbox()">
+        <div class="speaker" id="tb-speaker"></div>
+        <div id="tb-text"></div>
+        <div class="continue">클릭하여 닫기</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-deduce" class="screen">
+  <div class="topbar">
+    <div class="place">추리</div>
+    <div class="right">
+      <button class="small" onclick="toggleNotebook()">단서 수첩 (<span class="clue-count">0</span>)</button>
+      <button class="small" onclick="showScreen('hub')">숲 지도로</button>
+    </div>
+  </div>
+  <div id="deduce-inner">
+    <p class="lead" id="deduce-lead"></p>
+    <div id="deduce-clue-note"></div>
+    <div id="deduce-questions"></div>
+    <div id="deduce-submit-wrap"><button class="big" onclick="submitDeduction()">이것이 진실이다</button></div>
+    <p id="deduce-fail"></p>
+  </div>
+</div>
+
+<div id="screen-end" class="screen">
+  <h2 id="end-title"></h2>
+  <div id="end-text"></div>
+  <button class="big" onclick="location.reload()">처음부터</button>
+  <div class="team-name" id="end-team"></div>
+</div>
+
+<div id="notebook">
+  <button id="notebook-close" onclick="closeNotebook()" aria-label="단서 수첩 닫기">&times;</button>
+  <h2>단서 수첩</h2>
+  <div id="notebook-list"></div>
+</div>
+
+<div id="toast"></div>
+
+<div id="edit-panel">
+  편집 모드 (E 로 종료)<br>
+  화면 위에서 드래그하면 좌표가 나옵니다<br>
+  <span id="edit-out">{ x: -, y: -, w: -, h: - }</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     2. 엔진  —  고치지 않아도 됩니다
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+const state = {
+  clues: new Set(),      // 획득한 단서 id
+  visited: new Set(),    // 다녀온 장면 id
+  introIndex: 0,
+  currentScene: null
+};
+
+const $ = id => document.getElementById(id);
+
+/* ── 화면 전환 ── */
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  $("screen-" + name).classList.add("active");
+  $("notebook").classList.remove("open");
+  window.scrollTo(0, 0);
+}
+
+/* ── 배경 문자열 처리: 그라데이션이면 그대로, 아니면 이미지 경로 ── */
+function bgValue(bg) {
+  return bg.includes("gradient(") ? bg : 'url("' + bg + '")';
+}
+
+/* ── 타이틀 & 인트로 ── */
+function initTitle() {
+  $("t-title").textContent = GAME.title;
+  $("t-subtitle").textContent = GAME.subtitle;
+  $("t-team").textContent = GAME.teamName;
+  $("end-team").textContent = GAME.teamName;
+  document.title = GAME.title;
+  if (GAME.titleBackground) {
+    const t = $("screen-title");
+    t.style.backgroundImage =
+      "linear-gradient(rgba(8,12,20,0.35), rgba(8,12,20,0.65)), " + bgValue(GAME.titleBackground);
+    t.style.backgroundSize = "cover";
+    t.style.backgroundPosition = "center";
+    document.querySelector("#screen-title .moon").style.display = "none";
+  }
+}
+function startIntro() {
+  state.introIndex = 0;
+  showScreen("intro");
+  $("intro-line").textContent = GAME.intro[0] || "";
+  if (!GAME.intro.length) enterHub();
+}
+function nextIntro() {
+  state.introIndex++;
+  if (state.introIndex >= GAME.intro.length) { enterHub(); return; }
+  $("intro-line").textContent = GAME.intro[state.introIndex];
+}
+
+/* ── 허브 ── */
+function enterHub() {
+  $("hub-incident").innerHTML = GAME.incident;
+  const wrap = $("hub-cards");
+  wrap.innerHTML = "";
+  GAME.scenes.forEach(sc => {
+    const card = document.createElement("div");
+    card.className = "hub-card" + (state.visited.has(sc.id) ? " visited" : "");
+    card.innerHTML =
+      '<div class="bg" style="background-image:' + bgValue(sc.background) + '"></div>' +
+      '<div class="name">' + sc.name + "</div>";
+    card.onclick = () => enterScene(sc.id);
+    wrap.appendChild(card);
+  });
+  showScreen("hub");
+}
+
+/* ── 장면 ── */
+function enterScene(id) {
+  const sc = GAME.scenes.find(s => s.id === id);
+  if (!sc) return;
+  state.currentScene = sc;
+  state.visited.add(id);
+  $("scene-name").textContent = sc.name;
+  const stage = $("stage");
+  stage.style.backgroundImage = bgValue(sc.background);
+  stage.querySelectorAll(".hotspot").forEach(h => h.remove());
+  sc.hotspots.forEach(h => {
+    const el = document.createElement("div");
+    el.className = "hotspot";
+    el.style.left = h.x + "%";
+    el.style.top = h.y + "%";
+    el.style.width = h.w + "%";
+    el.style.height = h.h + "%";
+    el.dataset.label = h.label || "";
+    el.onclick = () => activateHotspot(h);
+    stage.appendChild(el);
+  });
+  closeTextbox();
+  showScreen("scene");
+}
+
+function activateHotspot(h) {
+  // alt: 특정 단서를 갖고 있으면 대사와 보상이 바뀐다 (비선형 장치)
+  let text = h.text, gives = h.givesClue;
+  if (h.alt && state.clues.has(h.alt.clue)) {
+    text = h.alt.text;
+    gives = h.alt.givesClue !== undefined ? h.alt.givesClue : null;
+  }
+  $("tb-speaker").textContent = h.speaker || h.label || "";
+  $("tb-text").textContent = text;
+  $("textbox").classList.add("open");
+  if (gives) gainClue(gives);
+}
+function closeTextbox() { $("textbox").classList.remove("open"); }
+
+/* ── 단서 ── */
+function gainClue(id) {
+  if (state.clues.has(id)) return;
+  const clue = GAME.clues.find(c => c.id === id);
+  if (!clue) { console.warn("정의되지 않은 단서 id:", id); return; }
+  state.clues.add(id);
+  updateClueCount();
+  showToast("단서 획득 — " + clue.name);
+}
+function updateClueCount() {
+  document.querySelectorAll(".clue-count").forEach(el => el.textContent = state.clues.size);
+}
+function toggleNotebook() {
+  const nb = $("notebook");
+  const list = $("notebook-list");
+  list.innerHTML = "";
+  if (state.clues.size === 0) {
+    list.innerHTML = '<p class="clue-empty">아직 모은 단서가 없다.<br>숲을 조사해 보자.</p>';
+  } else {
+    GAME.clues.filter(c => state.clues.has(c.id)).forEach(c => {
+      const div = document.createElement("div");
+      div.className = "clue-item";
+      div.innerHTML = '<div class="clue-name">' + c.name + '</div><div class="clue-desc">' + c.desc + "</div>";
+      list.appendChild(div);
+    });
+  }
+  nb.classList.toggle("open");
+}
+function closeNotebook() { $("notebook").classList.remove("open"); }
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ── 추리 ── */
+function renderDeduce() {
+  $("deduce-lead").textContent = GAME.deduction.lead;
+  $("deduce-clue-note").textContent =
+    "지금까지 모은 단서: " + state.clues.size + " / " + GAME.clues.length;
+  const wrap = $("deduce-questions");
+  wrap.innerHTML = "";
+  GAME.deduction.questions.forEach((q, i) => {
+    const div = document.createElement("div");
+    div.className = "deduce-q";
+    const opts = q.options.map(o => '<option value="' + o + '">' + o + "</option>").join("");
+    div.innerHTML =
+      '<div class="q">' + q.prompt + "</div>" +
+      '<select id="deduce-sel-' + i + '"><option value="">— 선택하시오 —</option>' + opts + "</select>";
+    wrap.appendChild(div);
+  });
+  $("deduce-fail").classList.remove("show");
+}
+function submitDeduction() {
+  const allCorrect = GAME.deduction.questions.every((q, i) =>
+    $("deduce-sel-" + i).value === q.answer);
+  if (allCorrect) {
+    $("end-title").textContent = GAME.ending.title;
+    $("end-text").textContent = GAME.ending.text;
+    showScreen("end");
+  } else {
+    const f = $("deduce-fail");
+    f.textContent = GAME.deduction.failText;
+    f.classList.add("show");
+  }
+}
+
+/* ── 제작 도구: H = 핫스팟 표시, E = 좌표 편집 모드 ── */
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
+  if (e.key === "h" || e.key === "H") document.body.classList.toggle("show-hotspots");
+  if (e.key === "e" || e.key === "E") document.body.classList.toggle("edit-mode");
+  if (e.key === "Escape") closeNotebook();
+});
+
+(function setupEditMode() {
+  const stage = $("stage");
+  const rect = $("edit-rect");
+  let start = null;
+  const pct = (ev) => {
+    const r = stage.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(100, (ev.clientX - r.left) / r.width * 100)),
+      y: Math.max(0, Math.min(100, (ev.clientY - r.top) / r.height * 100))
+    };
+  };
+  stage.addEventListener("mousedown", ev => {
+    if (!document.body.classList.contains("edit-mode")) return;
+    start = pct(ev);
+    rect.style.display = "block";
+  });
+  stage.addEventListener("mousemove", ev => {
+    if (!start) return;
+    const p = pct(ev);
+    const x = Math.min(start.x, p.x), y = Math.min(start.y, p.y);
+    const w = Math.abs(p.x - start.x), h = Math.abs(p.y - start.y);
+    rect.style.left = x + "%"; rect.style.top = y + "%";
+    rect.style.width = w + "%"; rect.style.height = h + "%";
+    $("edit-out").textContent =
+      "{ x: " + x.toFixed(0) + ", y: " + y.toFixed(0) +
+      ", w: " + w.toFixed(0) + ", h: " + h.toFixed(0) + " }";
+  });
+  window.addEventListener("mouseup", () => {
+    if (start) start = null;
+  });
+})();
+
+initTitle();
+</script>
+</body>
+</html>

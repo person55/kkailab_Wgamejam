@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울 2040 — 챕터 1 밤섬</title>
+<!--
+═══════════════════════════════════════════════════════════════════
+  수몰 서울 (가제) — 챕터 1 「밤섬」 · 텍스트판
+  문장이 한 호흡씩 나타난다. 클릭(또는 스페이스)이 다음 문장을 부른다.
+  갈림길에서만 선택지가 나타난다. 지식과 죽음은 문장 아래에 흐른다.
+═══════════════════════════════════════════════════════════════════
+-->
+<style>
+  :root {
+    --paper: #0c0f11;
+    --ink: #e6e2d4;
+    --ink-dim: #7c7f78;
+    --accent: #9fd8cf;
+    --accent-dim: #4a7a72;
+    --blood: #c97a6a;
+    --edge: #232a2c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+    transition: background 1.2s;
+  }
+  body.death { background: #000; }
+
+  /* ── 전면 그림 + 오른쪽 1/3 텍스트 ── */
+  #art {
+    position: fixed; inset: 0;
+    background: #07090b;
+    cursor: pointer;
+    transition: background 1.2s;
+  }
+  #art img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 1.1s ease;
+  }
+  #art img.on { opacity: 1; }
+  body.death #art { background: #000; }
+  #text-pane {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 33.4vw;
+    overflow-y: auto;
+    cursor: pointer;
+    background: linear-gradient(to right,
+      rgba(10,13,15,0) 0%,
+      rgba(10,13,15,0.41) 11%,
+      rgba(10,13,15,0.45) 100%);
+  }
+  @media (max-width: 900px) {
+    #text-pane {
+      width: 100vw;
+      background: linear-gradient(to bottom,
+        rgba(10,13,15,0.25) 0%,
+        rgba(10,13,15,0.85) 40%,
+        rgba(10,13,15,0.92) 100%);
+    }
+    #more { left: 50%; }
+  }
+
+  /* ── 상단 ── */
+  #topbar {
+    position: sticky; top: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px;
+    background: linear-gradient(rgba(10,13,15,0.45) 45%, transparent);
+    z-index: 30;
+  }
+  #place {
+    color: var(--ink); font-size: 1.25rem;
+    letter-spacing: 0.3em; text-indent: 0.3em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 2px 10px rgba(0,0,0,0.85);
+  }
+  #btn-notebook {
+    font-family: inherit; font-size: 0.8rem;
+    color: var(--ink-dim); background: transparent;
+    border: 1px solid var(--edge);
+    padding: 0.45em 1em; cursor: pointer; letter-spacing: 0.1em;
+  }
+  #btn-notebook:hover { color: var(--accent); border-color: var(--accent-dim); }
+
+  /* ── 본문 ── */
+  #page-wrap {
+    padding: 5vh 2.4em 15vh 2.6em;
+  }
+  #page {
+    width: 100%;
+    font-size: clamp(0.98rem, 1.15vw, 1.12rem);
+    line-height: 2.05;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 2px 10px rgba(0,0,0,0.85);
+  }
+  .beat {
+    margin-bottom: 1.5em;
+    white-space: pre-line;
+    opacity: 0;
+    animation: rise 0.7s ease forwards;
+  }
+  .beat.past { opacity: 0.42; transition: opacity 0.8s; animation: none; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .death .beat { color: #cbb; }
+
+  .death-word {
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    color: var(--blood);
+    letter-spacing: 0.6em; text-indent: 0.6em;
+    text-align: center;
+    margin: 1.2em 0 1.6em;
+  }
+
+  /* ── 선택지 ── */
+  #choices { margin-top: 2.6em; }
+  .choice {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    font-size: 1em;
+    color: var(--accent);
+    background: transparent;
+    border: none;
+    padding: 0.45em 0;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 2px 10px rgba(0,0,0,0.9);
+    opacity: 0;
+    animation: rise 0.7s ease forwards;
+  }
+  .choice::before { content: "— "; color: var(--accent-dim); }
+  .choice:hover { color: #fff; }
+  .choice.dim { color: var(--accent-dim); }
+  .choice.dim:hover { color: var(--accent); }
+
+  /* ── 계속 힌트 ── */
+  #more {
+    position: fixed; bottom: 26px; left: 83.3vw;
+    transform: translateX(-50%);
+    color: var(--ink-dim); font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    animation: breathe 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes breathe { 0%,100% { opacity: 0.25; } 50% { opacity: 0.8; } }
+  #more.hidden { display: none; }
+
+  /* ── 타이틀 ── */
+  #title-screen {
+    position: fixed; inset: 0;
+    background:
+      linear-gradient(rgba(8,11,13,0.35), rgba(8,11,13,0.55)),
+      url("img/title.png") center / cover no-repeat,
+      var(--paper);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 50;
+    transition: opacity 1.4s;
+  }
+  #title-screen h1, #title-screen .sub { text-shadow: 0 2px 18px rgba(0,0,0,0.85); }
+  #title-screen h1 { color: #fff; }
+  #btn-start { background: rgba(8,11,13,0.5); border-color: rgba(255,255,255,0.45); color: #fff; }
+  #title-screen.gone { opacity: 0; pointer-events: none; }
+  #title-screen h1 {
+    font-size: clamp(2rem, 6vw, 3.4rem);
+    letter-spacing: 0.5em; text-indent: 0.5em;
+    font-weight: normal;
+    margin-bottom: 0.9em;
+  }
+  #title-screen .sub {
+    color: var(--ink-dim); letter-spacing: 0.3em; text-indent: 0.3em;
+    margin-bottom: 14vh; font-size: 0.9rem;
+  }
+  #btn-start {
+    font-family: inherit; font-size: 1rem;
+    color: #fff; background: rgba(8,11,13,0.5);
+    border: 1px solid rgba(255,255,255,0.45);
+    padding: 0.8em 2.6em; cursor: pointer;
+    letter-spacing: 0.4em; text-indent: 0.4em;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+    transition: border-color 0.3s, color 0.3s, background 0.3s;
+  }
+  #btn-start:hover { color: var(--accent); border-color: var(--accent-dim); background: rgba(8,11,13,0.75); }
+
+  /* ── 기록 ── */
+  #notebook {
+    position: fixed; top: 0; right: -360px; bottom: 0;
+    width: 340px; max-width: 88vw;
+    background: #10171a;
+    border-left: 1px solid var(--edge);
+    padding: 26px 22px; z-index: 40;
+    transition: right 0.3s; overflow-y: auto;
+  }
+  #notebook.open { right: 0; }
+  #notebook h2 { letter-spacing: 0.3em; color: var(--accent); font-size: 0.95rem; margin-bottom: 20px; }
+  #notebook-close {
+    position: absolute; top: 14px; right: 14px;
+    width: 40px; height: 40px;
+    font-size: 1.4rem; line-height: 1;
+    color: var(--ink-dim); background: transparent;
+    border: 1px solid var(--edge); border-radius: 4px;
+    cursor: pointer;
+  }
+  #notebook-close:hover { color: var(--accent); border-color: var(--accent-dim); }
+  .clue-item { border-bottom: 1px solid var(--edge); padding: 12px 2px; }
+  .clue-item .clue-name { margin-bottom: 4px; letter-spacing: 0.05em; font-size: 0.95rem; }
+  .clue-item .clue-desc { color: var(--ink-dim); font-size: 0.85rem; line-height: 1.75; }
+  .clue-empty { color: var(--ink-dim); font-size: 0.9rem; line-height: 1.9; }
+
+  #toast {
+    position: fixed; top: 20px; left: 50%; transform: translate(-50%, -8px);
+    color: var(--accent-dim); font-size: 0.85rem; letter-spacing: 0.15em;
+    opacity: 0; pointer-events: none; transition: opacity 0.5s, transform 0.5s;
+    z-index: 60;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="title-screen">
+  <h1>서울 2040</h1>
+  <div class="sub">챕터 1 · 밤섬</div>
+  <button id="btn-start" onclick="startGame()">펼친다</button>
+</div>
+
+<div id="art" onclick="tap()">
+  <img id="art-a" alt="">
+  <img id="art-b" alt="">
+</div>
+<main id="text-pane" onclick="tap()">
+  <div id="topbar" onclick="event.stopPropagation()">
+    <div id="place"></div>
+    <button id="btn-notebook" onclick="toggleNotebook()">기록 <span id="clue-count">0</span></button>
+  </div>
+  <div id="page-wrap">
+    <div id="page">
+      <div id="beats"></div>
+      <div id="choices"></div>
+    </div>
+  </div>
+</main>
+
+<div id="more" class="hidden">▾</div>
+
+<div id="notebook" onclick="event.stopPropagation()">
+  <button id="notebook-close" onclick="closeNotebook()">&times;</button>
+  <h2>아이의 기록</h2>
+  <div id="notebook-list"></div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ═══════════════ 1. 이야기 데이터 ═══════════════ -->
+<script>
+/*
+  passage: { place, beats: [...], choices: [...], next: "id", type: "death"|"ending", retryTo: "id" }
+  beat:    "문장"  또는  { text, if, ifNot, set }   (if/ifNot: 기록 id — 조건이 맞을 때만 나타난다)
+  choice:  { label, to, if, ifNot }
+  기록(flags)은 수첩에 보이는 것만 CLUES 에 정의한다.
+*/
+const CLUES = [
+  { id: "know-berry", name: "새들이 고른 열매",
+    desc: "직박구리는 붉은 열매만 먹는다. 흰 열매 덤불에는 새가 한 마리도 앉지 않는다." },
+  { id: "have-berry", name: "붉은 열매 한 줌",
+    desc: "새들이 고른 쪽. 주머니 속에서 달콤한 냄새가 난다." },
+  { id: "know-water", name: "노트의 경고",
+    desc: "「강물은 마시지 마라. 하늘이 준 것만 마셔라.」 — 그리고 마지막 장: 「여의도로 간다. 보리를 부탁한다.」" },
+  { id: "have-water", name: "물통의 빗물",
+    desc: "방수천이 모은 하늘의 물. 물통이 묵직하다." },
+  { id: "know-river", name: "개의 거절",
+    desc: "개는 필사적으로 강물을 거부했다. 유리처럼 맑은 물 — 마시는 물은, 따로 있다는 뜻이다." },
+  { id: "know-drone", name: "드론의 규칙",
+    desc: "천천히 온다. 보이면 숨을 시간은 있다. 쉬익 — 소리가 나면, 늦은 것이다." },
+  { id: "dog-joined", name: "곁에 있는 개",
+    desc: "따뜻한 숨. 아이는 더 이상 혼자가 아니다." }
+];
+
+const STORY = {
+
+  start: "intro",
+
+  passages: {
+
+    /* ────────── 도입 ────────── */
+    intro: {
+      place: "",
+      beats: [
+        "물이 도시를 덮은 지 오래되었다.",
+        "섬은 융기했고, 숲이 되었다.",
+        "아이는 이 섬에서 눈을 떴다.",
+        "멀리서 — 개 짖는 소리가 들린다."
+      ],
+      next: "island"
+    },
+
+    /* ────────── 섬 (중심) ────────── */
+    island: {
+      place: "밤섬",
+      beats: [
+        { text: "섬은 넓고, 하루는 길다.", ifNot: "dog-joined" },
+        { text: "개가 앞장서 걷는다. 북쪽으로 — 가 본 적 없는 길이다.", if: "dog-joined" }
+      ],
+      choices: [
+        { label: "물가로 내려간다", to: "shore" },
+        { label: "숲 안쪽, 낡은 천막 쪽으로", to: "camp" },
+        { label: "능선을 오른다", to: "ridge" },
+        { label: "짖는 소리를 따라간다", to: "ferry", ifNot: "dog-joined" },
+        { label: "개를 따라, 북쪽으로", to: "shallows", if: "dog-joined" }
+      ]
+    },
+
+    /* ────────── 물가 ────────── */
+    shore: {
+      place: "물가",
+      beats: [
+        "물은 유리처럼 맑다.",
+        "수면 아래로 가로등이 서 있다. 돌길이 물속으로 이어진다 — 한때 누군가 매일 걷던 길.",
+        "멀리, 물 위로 솟은 탑들. 해를 받아 금빛으로 빛나는 저 건물의 이름을, 아이는 알고 있다.",
+        "…목이 마르다."
+      ],
+      choices: [
+        { label: "강물을 마신다", to: "death-water" },
+        { label: "새들을 바라본다", to: "shore-birds" },
+        { label: "열매 덤불로 간다", to: "shore-bush" },
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    "shore-birds": {
+      place: "물가",
+      beats: [
+        "직박구리 한 쌍이 붉은 열매를 부지런히 삼킨다.",
+        "흰 열매 덤불에는 — 새가 한 마리도 앉지 않는다.",
+        { text: "아이는 그것을 기억해 둔다.", set: "know-berry" }
+      ],
+      choices: [
+        { label: "열매 덤불로 간다", to: "shore-bush" },
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    "shore-bush": {
+      place: "물가",
+      beats: [
+        { text: "붉은 열매와 흰 열매. 흰 쪽이 크고, 탐스럽다.", ifNot: "know-berry" },
+        { text: "덤불 앞에서, 아이는 새들이 고른 쪽을 떠올린다.", if: "know-berry" }
+      ],
+      choices: [
+        { label: "흰 열매를 먹어 본다", to: "death-berry", ifNot: "know-berry" },
+        { label: "붉은 열매를 먹어 본다", to: "shore-bush-red", ifNot: "know-berry" },
+        { label: "붉은 열매를 주머니에 담는다", to: "shore-bush-pick", if: "know-berry" },
+        { label: "덤불을 지나친다", to: "island" }
+      ]
+    },
+
+    "shore-bush-red": {
+      place: "물가",
+      beats: [
+        "시고, 달다.",
+        "아무 일도 일어나지 않는다.",
+        "…그러나 흰 쪽이었다면 어땠을지, 아이는 알지 못한다. 새들이라면 알았을 것이다."
+      ],
+      choices: [
+        { label: "새들을 바라본다", to: "shore-birds" },
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    "shore-bush-pick": {
+      place: "물가",
+      beats: [
+        { text: "붉은 열매를 주머니에 담는다. 달콤한 냄새가 따라온다.", set: "have-berry" }
+      ],
+      choices: [
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    /* ────────── 캠프 ────────── */
+    camp: {
+      place: "캠프",
+      beats: [
+        "숲 안쪽, 빈터.",
+        "낡은 방수천이 바람에 부풀어 있다. 그 아래 유리병마다, 맑은 물이 반쯤.",
+        "불 꺼진 자리. 나무 상자 위에 노트 한 권.",
+        "그리고 물가에는 — 뼈. 고라니였던 것. 상처는 없다. 물을 향해 누워 있다, 마시던 자세 그대로."
+      ],
+      choices: [
+        { label: "노트를 읽는다", to: "camp-note" },
+        { label: "빗물 수집기를 살핀다", to: "camp-collector" },
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    "camp-note": {
+      place: "캠프",
+      beats: [
+        "빛바랜 글씨.",
+        "「강물은 마시지 마라. 하늘이 준 것만 마셔라.\n열매는 새들에게 물어라.」",
+        { text: "마지막 장.\n「여의도로 간다. 보리를 부탁한다.」", set: "know-water" },
+        "보리가 누구인지는, 적혀 있지 않다."
+      ],
+      choices: [
+        { label: "빗물 수집기를 살핀다", to: "camp-collector" },
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    "camp-collector": {
+      place: "캠프",
+      beats: [
+        { text: "병마다 모인 맑은 물. 강물을 두고, 왜 이렇게 모았을까.", ifNot: ["know-water", "know-river"] },
+        { text: "개가 거부한 강물 — 그렇다면 이것은, 하늘이 준 물이다.", if: "know-river", ifNot: "know-water" },
+        { text: "하늘이 준 물이다.", if: "know-water" }
+      ],
+      choices: [
+        { label: "물통을 채운다", to: "camp-fill", if: "know-water" },
+        { label: "물통을 채운다", to: "camp-fill", if: "know-river", ifNot: "know-water" },
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    "camp-fill": {
+      place: "캠프",
+      beats: [
+        { text: "물통이 묵직해졌다.", set: "have-water" }
+      ],
+      choices: [
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    /* ────────── 능선 ────────── */
+    ridge: {
+      place: "능선",
+      beats: [
+        "섬에서 가장 높은 곳. 바람이 분다.",
+        "강 건너, 초록에 덮인 탑들. 산 위의 탑은 아직 뾰족하다.",
+        "아래 물 위에는 물새들이 쉬고 있다. 평화롭다.",
+        "— 하늘에 점 하나.",
+        "점은 천천히 내려온다. 날갯짓이, 없다.",
+        "새들은 아직 모른다.",
+        "쉬익.",
+        "물새 하나가, 물 위에서 사라졌다.",
+        { text: "천천히 온다. 보이면 숨을 시간은 있다. 소리가 나면 — 늦은 것이다.\n아이는 그것을 뼛속에 적었다.", set: "know-drone" }
+      ],
+      choices: [
+        { label: "섬으로 돌아간다", to: "island" }
+      ]
+    },
+
+    /* ────────── 유람선 잔해 ────────── */
+    ferry: {
+      place: "유람선 잔해",
+      beats: [
+        { text: "물가의 잔해. 강 위를 미끄러지던 배가, 이제 덩굴에 덮여 기울어 있다.", ifNot: "dog-lured" },
+        { text: "그 갑판 위에서 개 한 마리가 짖고 있다. 마르고, 지쳐 있다.", ifNot: "dog-lured" },
+        { text: "짖는 소리는 하늘 어딘가로 퍼져나간다.\n— 그 소리를 듣는 것이, 새들만은 아닐 것이다.", ifNot: "dog-lured" },
+        { text: "개는 잔해 그늘에서 아이를 기다리고 있었다.", if: "dog-lured" },
+        { text: "혀가 마른 소리를 낸다. 발밑에는 — 유리처럼 맑은 강물이, 무한히 있다.", if: "dog-lured" }
+      ],
+      choices: [
+        { label: "그냥 다가간다", to: "ferry-scare", ifNot: "dog-lured" },
+        { label: "붉은 열매를 내민다", to: "ferry-lured", if: "have-berry", ifNot: "dog-lured" },
+        { label: "흰 열매를 내민다", to: "ferry-white", if: "have-berry", ifNot: "dog-lured" },
+        { label: "강물을 떠서 준다", to: "ferry-river", if: "dog-lured" },
+        { label: "물통의 빗물을 준다", to: "ferry-rain", if: ["dog-lured", "have-water"] },
+        { label: "물러난다", to: "island" }
+      ]
+    },
+
+    "ferry-scare": {
+      place: "유람선 잔해",
+      beats: [
+        "개는 이빨을 보이며 물러선다.",
+        "배가 고픈, 눈이었다."
+      ],
+      choices: [
+        { label: "잔해 앞으로", to: "ferry" },
+        { label: "물러난다", to: "island" }
+      ]
+    },
+
+    "ferry-white": {
+      place: "유람선 잔해",
+      beats: [
+        "개는 냄새만 맡고, 고개를 돌린다.",
+        "…이 개는 흰 열매를 안다."
+      ],
+      choices: [
+        { label: "잔해 앞으로", to: "ferry" },
+        { label: "물러난다", to: "island" }
+      ]
+    },
+
+    "ferry-lured": {
+      place: "유람선 잔해",
+      beats: [
+        "개가 조심스럽게 내려온다.",
+        "손바닥의 열매를 먹는다 — 따뜻한 숨이 손에 닿는다.",
+        { text: "열매를 삼킨 개가 아이 발치에 주저앉는다. 탈진해 있다.", set: "dog-lured" },
+        "혀가 마른 소리를 낸다. 발밑에는 — 유리처럼 맑은 강물이, 무한히 있다."
+      ],
+      choices: [
+        { label: "강물을 떠서 준다", to: "ferry-river" },
+        { label: "물통의 빗물을 준다", to: "ferry-rain", if: "have-water" },
+        { label: "줄 물이 없다 — 찾아서 돌아온다", to: "island" }
+      ]
+    },
+
+    "ferry-river": {
+      place: "유람선 잔해",
+      beats: [
+        "개가 필사적으로 고개를 젓는다.",
+        { text: "…이 물을 마시면 안 된다는 걸, 이 개는 어떻게 알까.", set: "know-river" }
+      ],
+      choices: [
+        { label: "물통의 빗물을 준다", to: "ferry-rain", if: "have-water" },
+        { label: "물을 찾아 돌아간다", to: "island" }
+      ]
+    },
+
+    "ferry-rain": {
+      place: "유람선 잔해",
+      beats: [
+        "개가 두 손의 물을 오래, 오래 핥아 마신다.",
+        { text: "그리고 고개를 들더니 — 아이 곁에서, 떨어지지 않는다.", set: "dog-joined" },
+        "개가 코끝으로 아이의 손등을 민다. 북쪽을 본다."
+      ],
+      choices: [
+        { label: "개를 따라간다", to: "shallows" },
+        { label: "아직 — 섬을 더 둘러본다", to: "island" }
+      ]
+    },
+
+    /* ────────── 북쪽 여울 ────────── */
+    shallows: {
+      place: "북쪽 여울",
+      beats: [
+        "얕은 물이 돌 위를 미끄러진다. 섬의 끝이다.",
+        "여울을 반쯤 건넜을 때 — 개가 우뚝 멈춘다.",
+        "털이 곤두선다. 낮게 으르렁대며, 아이의 소매를 물고 바위 틈 쪽으로 끈다.",
+        "소리는, 없다.",
+        { text: "하늘 구석 — 날갯짓 없는 점.\n아이는 저것을 안다. 보이면, 숨을 시간이 있다.", if: "know-drone" }
+      ],
+      choices: [
+        { label: "개를 따라간다", to: "shallows-hide" },
+        { label: "소리가 없다 — 그대로 간다", to: "death-drone-still" },
+        { label: "왔던 길로 달린다", to: "death-drone-run" }
+      ]
+    },
+
+    "shallows-hide": {
+      place: "북쪽 여울",
+      beats: [
+        "개가 낮게 몸을 붙이고 바위 틈으로 미끄러진다. 아이도 따라 기어들었다.",
+        "차가운 그림자가, 머리 위를 천천히 지나간다.",
+        "개의 심장이 팔 안에서 뛴다. 아이는 숨을 멈췄다.",
+        "…빛이 돌아왔다.",
+        "지나갔다."
+      ],
+      next: "ending"
+    },
+
+    /* ────────── 죽음들 ────────── */
+    "death-water": {
+      type: "death",
+      word: "맑은 물",
+      beats: [
+        "물은 달고, 차가웠다.",
+        "그렇게 마신 것들이 어디로 스며드는지, 아이는 끝내 알지 못했다.",
+        "물가의 고라니 뼈처럼 —",
+        "아이도, 물을 향해 누웠다.",
+        "그리고 영원히 잠들었다."
+      ]
+    },
+
+    "death-berry": {
+      type: "death",
+      word: "흰 열매",
+      beats: [
+        "흰 열매는 혀 위에서 눈처럼 녹았다.",
+        "달았다.",
+        "…그리고, 조용해졌다.",
+        "아이는 영원히 잠들었다.",
+        "새들은 알고 있었다."
+      ]
+    },
+
+    "death-drone-still": {
+      type: "death",
+      word: "쉬 익",
+      beats: [
+        "여울 한가운데. 발밑에서 물이 반짝였다.",
+        "쉬익.",
+        "그 소리를 들은 것이, 마지막이었다.",
+        "아이는 영원히 잠들었다.",
+        "규칙은 하나였다.\n보이면, 숨어라."
+      ]
+    },
+
+    "death-drone-run": {
+      type: "death",
+      word: "쉬 익",
+      beats: [
+        "탁 트인 물가를 달리는 작은 등.",
+        "등 뒤에서, 쉬익.",
+        "아이는 영원히 잠들었다.",
+        "규칙은 하나였다.\n보이면, 숨어라."
+      ]
+    },
+
+    /* ────────── 엔딩 ────────── */
+    ending: {
+      type: "ending",
+      place: "",
+      beats: [
+        "바위 틈에서 나왔을 때, 해가 기울고 있었다.",
+        "노을. 물에 잠긴 도시의 실루엣. 조용해진 하늘.",
+        { text: "아이가 처음으로 입을 연다.", if: "know-water" },
+        { text: "\"…보리?\"", if: "know-water" },
+        { text: "개의 귀가 선다. 꼬리가, 흔들린다.", if: "know-water" },
+        { text: "개가 문득 섬 안쪽을 향해 짖는다 — 낡은 천막이 있던 방향을.\n무언가를, 알려주려는 것처럼.", ifNot: "know-water" },
+        "— 챕터 1 끝 —"
+      ]
+    }
+  }
+};
+</script>
+
+<!-- ═══════════════ 2. 엔진 ═══════════════ -->
+<script>
+/* 문단 → 분위기 그림. 없는 문단(도입·죽음)은 액자가 어둠으로 가라앉는다. */
+const ART = {
+  island: "img/island.png",
+  shore: "img/shore.png",
+  "shore-birds": "img/shore.png",
+  "shore-bush": "img/shore.png",
+  "shore-bush-red": "img/shore.png",
+  "shore-bush-pick": "img/shore.png",
+  camp: "img/camp.png",
+  "camp-note": "img/camp.png",
+  "camp-collector": "img/camp.png",
+  "camp-fill": "img/camp.png",
+  ridge: "img/ridge.png",
+  ferry: "img/ferry.png",
+  "ferry-scare": "img/ferry.png",
+  "ferry-white": "img/ferry.png",
+  "ferry-lured": "img/lure.png",
+  "ferry-river": "img/lure.png",
+  "ferry-rain": "img/water.png",
+  shallows: "img/shallows.png",
+  "shallows-hide": "img/hide.png",
+  ending: "img/ending.png"
+};
+
+const state = {
+  flags: new Set(),
+  passage: null,
+  beatIndex: 0,
+  done: false      // 현재 문단의 문장이 모두 나왔는가
+};
+
+let artCurrent = null, artActive = "art-a";
+function setArt(src) {
+  if (src === artCurrent) return;
+  artCurrent = src;
+  const a = $("art-a"), b = $("art-b");
+  if (!src) { a.classList.remove("on"); b.classList.remove("on"); return; }
+  const showEl = artActive === "art-a" ? b : a;
+  const hideEl = artActive === "art-a" ? a : b;
+  showEl.src = src;
+  showEl.classList.add("on");
+  hideEl.classList.remove("on");
+  artActive = showEl.id;
+}
+
+const $ = id => document.getElementById(id);
+
+function has(f) { return state.flags.has(f); }
+function condOk(item) {
+  const ifs = item.if ? [].concat(item.if) : [];
+  const nots = item.ifNot ? [].concat(item.ifNot) : [];
+  return ifs.every(f => has(f)) && nots.every(f => !has(f));
+}
+
+/* ── 소리 (Web Audio 합성 — 파일 없음) ── */
+let AC = null, ambientGain = null;
+
+function brownBuffer(seconds) {
+  const len = AC.sampleRate * seconds;
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.02 * white) / 1.02;
+    d[i] = last * 3.5;
+  }
+  return buf;
+}
+function whiteBuffer(seconds) {
+  const len = AC.sampleRate * seconds;
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function startAudio() {
+  if (AC) return;
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  ambientGain = AC.createGain();
+  ambientGain.gain.value = 0;
+  ambientGain.connect(AC.destination);
+
+  // 바람과 물 — 낮게 씻기는 소리
+  const wind = AC.createBufferSource();
+  wind.buffer = brownBuffer(6); wind.loop = true;
+  const windLP = AC.createBiquadFilter();
+  windLP.type = "lowpass"; windLP.frequency.value = 420;
+  const windGain = AC.createGain(); windGain.gain.value = 0.5;
+  const lfo = AC.createOscillator(); lfo.frequency.value = 0.07;
+  const lfoGain = AC.createGain(); lfoGain.gain.value = 0.18;
+  lfo.connect(lfoGain); lfoGain.connect(windGain.gain);
+  wind.connect(windLP); windLP.connect(windGain); windGain.connect(ambientGain);
+  wind.start(); lfo.start();
+
+  // 잔물결의 반짝임
+  const shimmer = AC.createBufferSource();
+  shimmer.buffer = whiteBuffer(4); shimmer.loop = true;
+  const bp = AC.createBiquadFilter();
+  bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 0.8;
+  const shGain = AC.createGain(); shGain.gain.value = 0.02;
+  shimmer.connect(bp); bp.connect(shGain); shGain.connect(ambientGain);
+  shimmer.start();
+
+  ambientGain.gain.linearRampToValueAtTime(0.12, AC.currentTime + 3);
+  scheduleBird();
+}
+
+function scheduleBird() {
+  if (!AC) return;
+  setTimeout(() => {
+    if (AC && ambientGain.gain.value > 0.01 && !document.body.classList.contains("death")) chirp();
+    scheduleBird();
+  }, 5000 + Math.random() * 9000);
+}
+function chirp() {
+  const t = AC.currentTime;
+  const o = AC.createOscillator();
+  const g = AC.createGain();
+  o.type = "sine";
+  const f0 = 2800 + Math.random() * 900;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f0 * 1.35, t + 0.09);
+  o.frequency.exponentialRampToValueAtTime(f0 * 0.9, t + 0.18);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.03, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+  o.connect(g); g.connect(AC.destination);
+  o.start(t); o.stop(t + 0.3);
+}
+
+function fadeAmbient(level, seconds) {
+  if (!AC) return;
+  ambientGain.gain.cancelScheduledValues(AC.currentTime);
+  ambientGain.gain.setValueAtTime(ambientGain.gain.value, AC.currentTime);
+  ambientGain.gain.linearRampToValueAtTime(level, AC.currentTime + seconds);
+}
+
+/* 쉬익 — 유일한 발사음 */
+function playHiss() {
+  if (!AC) return;
+  const t = AC.currentTime;
+  const src = AC.createBufferSource();
+  src.buffer = whiteBuffer(1);
+  const bp = AC.createBiquadFilter();
+  bp.type = "bandpass"; bp.Q.value = 1.1;
+  bp.frequency.setValueAtTime(7000, t);
+  bp.frequency.exponentialRampToValueAtTime(1400, t + 0.55);
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.55, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+  src.connect(bp); bp.connect(g); g.connect(AC.destination);
+  src.start(t); src.stop(t + 0.8);
+}
+
+function startGame() {
+  $("title-screen").classList.add("gone");
+  startAudio();
+  goTo(STORY.start);
+}
+
+function goTo(id) {
+  const p = STORY.passages[id];
+  if (!p) { console.warn("없는 문단:", id); return; }
+  state.passage = p;
+  state.beatIndex = 0;
+  state.done = false;
+  setArt(ART[id] || null);
+  document.body.classList.toggle("death", p.type === "death");
+  fadeAmbient(p.type === "death" ? 0 : 0.12, 1.2);
+  $("place").textContent = p.place || "";
+  $("beats").innerHTML = "";
+  $("choices").innerHTML = "";
+  if (p.type === "death" && p.word) {
+    const w = document.createElement("div");
+    w.className = "death-word";
+    w.textContent = p.word;
+    $("beats").appendChild(w);
+  }
+  $("text-pane").scrollTop = 0;
+  revealNext();
+}
+
+/* 다음 문장 하나를 드러낸다 */
+function revealNext() {
+  const p = state.passage;
+  // 지난 문장은 잦아든다
+  document.querySelectorAll(".beat").forEach(b => b.classList.add("past"));
+
+  while (state.beatIndex < p.beats.length) {
+    let beat = p.beats[state.beatIndex];
+    state.beatIndex++;
+    if (typeof beat === "string") beat = { text: beat };
+    if (!condOk(beat)) continue;
+    if (beat.set) gainFlag(beat.set);
+    if (beat.text.includes("쉬익")) playHiss();
+    const el = document.createElement("div");
+    el.className = "beat";
+    el.textContent = beat.text;
+    $("beats").appendChild(el);
+    updateMore();
+    scrollToEnd();
+    // 마지막 문장이었다면, 한 호흡 뒤 선택지가 스스로 떠오른다
+    if (!hasMoreBeats()) finishBeats();
+    return;
+  }
+  // 문장이 끝났다 → 선택지 또는 다음 문단
+  finishBeats();
+}
+
+function finishBeats() {
+  if (state.done) return;
+  state.done = true;
+  const p = state.passage;
+  updateMore();
+  if (p.type === "death") {
+    addChoiceButton("처음부터 다시 시작한다", () => location.reload(), 0);
+  } else if (p.type === "ending") {
+    addChoiceButton("처음부터", () => location.reload(), 0);
+  } else if (p.choices) {
+    let d = 0;
+    p.choices.filter(condOk).forEach(c => {
+      addChoiceButton(c.label, () => goTo(c.to), d++);
+    });
+  }
+  scrollToEnd();
+}
+
+function addChoiceButton(label, fn, delayIndex) {
+  const btn = document.createElement("button");
+  btn.className = "choice";
+  btn.textContent = label;
+  btn.style.animationDelay = (0.5 + 0.15 * delayIndex) + "s";
+  btn.onclick = (e) => { e.stopPropagation(); fn(); };
+  $("choices").appendChild(btn);
+}
+
+/* 화면 어디를 눌러도 다음 문장 */
+function tap() {
+  if (!state.passage) return;
+  if (!state.done) {
+    // 아직 나올 문장이 남았는가
+    if (hasMoreBeats()) { revealNext(); return; }
+    // 남은 문장이 없다 → 마무리
+    finishBeats();
+    // next 연결 문단은 done 후 한 번 더 탭하면 이동
+  } else if (state.passage.next) {
+    goTo(state.passage.next);
+  }
+}
+
+function hasMoreBeats() {
+  const p = state.passage;
+  for (let i = state.beatIndex; i < p.beats.length; i++) {
+    let b = p.beats[i];
+    if (typeof b === "string") return true;
+    if (condOk(b)) return true;
+  }
+  return false;
+}
+
+function updateMore() {
+  const more = $("more");
+  const showing = !state.done ? hasMoreBeats() : !!state.passage.next;
+  more.classList.toggle("hidden", !showing);
+}
+
+function scrollToEnd() {
+  requestAnimationFrame(() => {
+    const pane = $("text-pane");
+    pane.scrollTo({ top: pane.scrollHeight, behavior: "smooth" });
+  });
+}
+
+/* ── 기록 ── */
+function gainFlag(id) {
+  if (state.flags.has(id)) return;
+  state.flags.add(id);
+  const clue = CLUES.find(c => c.id === id);
+  if (clue) {
+    updateClueCount();
+    showToast("기록 — " + clue.name);
+  }
+}
+function updateClueCount() {
+  $("clue-count").textContent = CLUES.filter(c => state.flags.has(c.id)).length;
+}
+function toggleNotebook() {
+  const nb = $("notebook");
+  const list = $("notebook-list");
+  list.innerHTML = "";
+  const owned = CLUES.filter(c => state.flags.has(c.id));
+  if (!owned.length) {
+    list.innerHTML = '<p class="clue-empty">아직 적은 것이 없다.<br>섬이 가르쳐 줄 것이다.</p>';
+  } else {
+    owned.forEach(c => {
+      const div = document.createElement("div");
+      div.className = "clue-item";
+      div.innerHTML = '<div class="clue-name">' + c.name + '</div><div class="clue-desc">' + c.desc + "</div>";
+      list.appendChild(div);
+    });
+  }
+  nb.classList.toggle("open");
+}
+function closeNotebook() { $("notebook").classList.remove("open"); }
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+/* 스페이스 / 엔터로도 진행 */
+document.addEventListener("keydown", e => {
+  if (e.key === " " || e.key === "Enter") {
+    if (!$("title-screen").classList.contains("gone")) { startGame(); return; }
+    e.preventDefault();
+    tap();
+  }
+  if (e.key === "Escape") closeNotebook();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>창문 달</title>
+<style>
+  body{background:#0d1420;color:#e8e4d8;font-family:"Noto Serif KR",serif;max-width:38em;margin:40px auto;padding:0 20px;line-height:1.9}
+  h1{color:#d8b45a;letter-spacing:.2em;font-size:1.4rem;margin-bottom:.4em}
+  #turn{color:#9a9788;font-size:.85em;letter-spacing:.15em;margin-bottom:.6em}
+  #panel{color:#9a9788;font-size:.85em;border:1px solid #2b3a4d;padding:8px 12px;margin-bottom:1.4em}
+  #panel b{color:#d8b45a;font-weight:normal}
+  .choice{display:block;margin:10px 0;padding:10px 16px;border:1px solid #2b3a4d;color:#d8b45a;cursor:pointer;background:none;width:100%;text-align:left;font:inherit}
+  .choice:hover{background:rgba(216,180,90,.1)}
+  #itch-slot{margin-top:24px}
+  #itch-slot a{color:#d8b45a}
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<div id="turn"></div>
+<div id="panel"></div>
+<div id="text"></div>
+<div id="choices"></div>
+<div id="itch-slot"></div>
+
+<script>
+/* ═══ 1. 게임 데이터 — 고치는 곳은 여기뿐 ═══ */
+const GAME = {
+  title: "창문 달",
+
+  /* 추후 itch.io 주소가 전달되면 아래 따옴표 안에만 넣는다.
+     비어 있으면 엔딩 화면에 아무것도 나타나지 않는다. */
+  itchUrl: "",
+
+  start: "프롤로그",
+  totalTurns: 10,
+
+  /* 상태: 값은 0~5. secret은 화면에 보이지 않는 내부 변수(비밀 보증 여부). */
+  initialState: { rel: 3, brew: 3, money: 0, resp: 0, secret: 0 },
+
+  /* 화면에 보이는 네 항목과 값별 표기 */
+  panel: [
+    { key: "rel",   name: "관계",   labels: ["잃음","끊어질 듯","서먹함","곁에 있음","단단함","한 배"] },
+    { key: "brew",  name: "양조장", labels: ["사라짐","문 닫기 직전","위태로움","작게 익는 중","자리 잡음","넉넉히 익는 중"] },
+    { key: "money", name: "돈",     labels: ["빈손","빠듯함","숨통","여유","넉넉함","거부"] },
+    { key: "resp",  name: "책임",   labels: ["가벼움","마음의 빚","나눠 진 무게","무거움","짓눌림","혼자 진 빚"] }
+  ],
+
+  /* 선택지의 effects: 숫자는 증감, "=n"은 그 값으로 고정.
+     바뀐 현재의 variants: when 조건({키:[최소,최대]})을 위에서부터 검사, 처음 맞는 것을 쓴다. 마지막은 조건 없는 기본값. */
+  nodes: {
+
+    "프롤로그": {
+      text: "마흔다섯. 직업은 없고, 삶은 무겁다.\n\n어느 날, 우연히 알약 다섯 개를 발견한다.\n한 알을 삼키면 과거의 한 시점으로 돌아갈 수 있다는 것을,\n당신은 곧 알게 된다.\n\n손바닥 위의 다섯 알. 머릿속에 제일 먼저 떠오른 것은 거창한 후회가 아니었다.\n\n— 주식을 사야 한다.",
+      choices: [
+        { label: "첫 번째 알약을 삼킨다", to: "1_개입" }
+      ]
+    },
+
+    "1_개입": {
+      turn: 1,
+      text: "2008년, 금융위기 직후. 스물일곱의 당신이 공장지대 한켠, 친구의 작은 양조장 사무실에 앉아 있다.\n\n누룩 냄새. 쌀을 지고 머리에 수건을 두른 친구. 동네 주점들만 받아 가는 막걸리, 창문 달. 그 라벨은 당신이 그렸다.\n\n무직인 당신에게 친구는 보증까지 서 주었다. 그리고 오늘, 친구가 손을 내민다.\n\n\"우리 같이 양조장 하자.\"\n\n세상이 무너진다고 모두가 주식을 던지는 지금, 당신은 미래를 안다.",
+      choices: [
+        { label: "친구의 보증으로 마련한 돈으로, 미래의 주식을 산다", to: "1_현재",
+          effects: { money: "=5", rel: -1, resp: +1 } },
+        { label: "주식 창을 닫고, 친구 곁에서 양조장을 함께 시작한다", to: "1_현재",
+          effects: { rel: +2, brew: +1, money: +1 } },
+        { label: "미래도, 친구의 보증도 쓰지 않는다 — 혼자 힘으로 버텨 본다", to: "1_현재",
+          effects: { rel: -1, brew: -1, resp: +1 } }
+      ]
+    },
+
+    "1_현재": {
+      turn: 2,
+      variants: [
+        { when: { money: [3, 5] },
+          text: "현재로 돌아온다. 당신은 부자다.\n\n그러나 친구는 이미 세상에 없다.\n\n당신의 성공을 가장 가까이서 지켜본 친구는 양조장과 자기 돈으로 레버리지 투자에 뛰어들었고, 빚과 수치심과 고립이 몇 년에 걸쳐 겹겹이 쌓였다.\n\n양조장이 있던 건물은 리모델링된 공유 오피스가 되었다. 유리 칸막이, 무향의 공조. 입주한 투자 컨설팅 업체는 — 당신이 투자한 회사다.\n\n로비에 서서, 당신은 한 문장을 삼킨다.\n\n이 돈의 첫 보증인은 그 애였다.",
+          effects: { rel: "=0", brew: "=0", resp: +2 } },
+        { when: { rel: [5, 5] },
+          text: "현재로 돌아온다. 누룩 냄새 속에서 눈을 뜬다.\n\n친구는 옆에서 쌀을 찌고, 당신은 라벨 원고를 다듬고 있다. 함께 시작한 세월이 손에 배어 있다.\n\n통장은 얇다. 그래도 창문 달은 오늘도 익는다. 다만 낡은 설비와 좁은 판로가, 얇은 통장 위에 조용히 얹혀 있다.",
+          effects: { money: -1, brew: +1 } },
+        { text: "현재로 돌아온다. 양조장은 그 자리에 있지만, 그 안에 당신의 자리는 없다.\n\n친구는 혼자 쌀을 지고, 혼자 장부를 적는다. 마주치면 인사를 하지만, 예전보다 짧다. 당신이 잡지 않은 손의 길이만큼.",
+          effects: { rel: -1 } }
+      ],
+      choices: [
+        { label: "두 번째 알약을 삼킨다", to: "2_개입" }
+      ]
+    },
+
+    "2_개입": {
+      turn: 3,
+      text: "알약이 당신을 데려간 곳은 — 친구가 처음 투자 이야기를 꺼내던 날의 사무실이다.\n\n친구가 별일 아니라는 듯 묻는다.\n\n\"요즘 다들 하는 그 투자… 나도 조금 해볼까?\"\n\n당신은 이 질문의 무게를 안다. 그 뒤에 있는 것이 욕심이 아니라, 뒤처지고 싶지 않은 마음이라는 것도.",
+      choices: [
+        { label: "미래를 털어놓는다 — \"하지 마. 나는 이미 한 번, 그 끝을 봤어.\"", to: "2_현재",
+          effects: { rel: -2, resp: +1 } },
+        { label: "\"장부를 같이 펴 보자\" — 며칠 밤이 걸려도, 숫자를 함께 본다", to: "2_현재",
+          effects: { rel: +1, brew: +1 } },
+        { label: "말없이 웃어넘기고, 나중에 혼자 돈으로 구멍을 메우기로 한다", to: "2_현재",
+          effects: { money: -1, resp: +2 } }
+      ]
+    },
+
+    "2_현재": {
+      turn: 4,
+      variants: [
+        { when: { money: [3, 5] },
+          text: "현재는 달라지지 않았다. 친구는 없다.\n\n무슨 말을 했든, 앞서 가 있는 당신의 말은 이렇게만 들렸다 — 너는 처음부터 다 알고 있었구나. 알면서 혼자 벌었구나.\n\n경고는 등을 떠미는 손이 되었다. 당신은 하나를 배웠다. 미래 정보만으로는 친구를 구할 수 없다.",
+          effects: { resp: +1 } },
+        { when: { rel: [4, 5] },
+          text: "현재. 함께 장부를 본 밤들이 시간을 바꿨다.\n\n친구는 무리한 빚 대신 작은 걸음을 골랐다. 낭비가 줄어 살림에 숨통이 트인다. 창문 달은 여전히 작지만, 숫자는 이제 둘이 같이 안다.",
+          effects: { money: +1 } },
+        { text: "현재. 사이는 좁혀지지 않았다.\n\n친구는 뒤처지지 않으려는 마음을 혼자 굴리고 있고, 양조장은 조금씩 기운다. 밖에서만 맴도는 손은 안쪽의 기울기를 잡지 못한다.",
+          effects: { brew: -1, rel: -1 } }
+      ],
+      choices: [
+        { label: "세 번째 알약을 삼킨다", to: "3_개입" }
+      ]
+    },
+
+    "3_개입": {
+      turn: 5,
+      text: "세 번째 알약. 2008년, 친구가 손을 내밀던 그날로 다시 돌아온다.\n\n\"우리 같이 양조장 하자.\"\n\n오래된 작업 폴더에서 본 것이 떠오른다. 창문 달의 첫 라벨 시안, 그 옆의 동업 제안 메모. 그 라벨은 남의 술에 그려 준 그림이 아니라, 같이 하자던 날의 대답으로 만들던 것이었다.",
+      choices: [
+        { label: "손을 잡는다 — 주식도, 미래의 부도 전부 접는다", to: "3_현재",
+          effects: { rel: +2, brew: +2, money: -1 } },
+        { label: "거리를 둔다 — \"각자의 길이 낫겠어\"라고 답한다", to: "3_현재",
+          effects: { rel: -2, brew: -1 } },
+        { label: "동업 대신, 이름과 얼굴만 만들어 주기로 한다 — 라벨 일을 맡는다", to: "3_현재",
+          effects: { rel: +1, brew: +1 } }
+      ]
+    },
+
+    "3_현재": {
+      turn: 6,
+      variants: [
+        { when: { brew: [4, 5] },
+          text: "현재. 둘이 키운 창문 달은 자리를 잡았다. 친구는 쌀을 찌고, 당신은 이름과 얼굴을 만들며.\n\n그러나 골목 어귀에 산업 지역 재개발 공고가 붙었다. 지키거나 옮길 돈은, 어느 쪽 주머니에도 없다.\n\n함께 남는 선택이 양조장을 자동으로 지키지는 못한다.",
+          effects: { resp: +1, money: -1 } },
+        { when: { rel: [0, 1] },
+          text: "현재. 소식은 건너서 온다.\n\n양조장이 흔들린다는 소문, 재개발 조합이 돈다는 소문. 당신이 설 자리는 그 소문의 바깥이다. 전화를 걸까 하다가, 거는 법을 잊었다는 것을 안다.",
+          effects: { rel: -1, resp: +1 } },
+        { text: "현재. 양조장은 버티고 있지만, 무게는 대부분 친구의 어깨에 있다.\n\n재개발 이야기가 골목을 돈다. 함께 남는 선택이 양조장을 자동으로 지키지는 못한다 — 반쯤만 걸친 자리는 더욱.",
+          effects: { brew: -1, resp: +1 } }
+      ],
+      choices: [
+        { label: "네 번째 알약을 삼킨다", to: "4_개입" }
+      ]
+    },
+
+    "4_개입": {
+      turn: 7,
+      text: "네 번째 알약. 재개발 조합 소문이 처음 돌던 날로 돌아온다.\n\n친구는 소문을 믿지 않는다. \"난 여기서 계속 빚을래.\"\n\n보증금, 설비, 이사 — 어느 길이든 돈이 모자란다는 것을 당신은 안다.",
+      choices: [
+        { label: "\"잃기 전에 다른 창문 하나만 같이 보자\" — 새 장소도, 비용 장부도 함께 편다", to: "4_현재",
+          effects: { rel: +1, brew: +2, money: -1, resp: +1 } },
+        { label: "새 장소를 밀어붙이고, 모자란 돈은 친구 몰래 개인 보증으로 메운다", to: "4_현재",
+          effects: { brew: +2, resp: +3, money: -1, secret: +1 } },
+        { label: "친구의 말대로, 지금 자리에서 함께 버티기로 한다", to: "4_현재",
+          effects: { brew: -2, rel: +1 } }
+      ]
+    },
+
+    "4_현재": {
+      turn: 8,
+      variants: [
+        { when: { secret: [1, 5] },
+          text: "현재. 목욕탕의 창문 달은 살아 있다. 깨진 파란 타일, 높은 창, 탕 바닥의 달빛 같은 새 라벨.\n\n그러나 이전 뒤 양조장은 예기치 않은 긴 휴업과 매출 공백을 겪었고, 그 결과는 사업체가 아니라 한 사람에게 도착했다.\n\n당신의 방 문틈에 등기 봉투가 꽂혀 있다. '보증채무 이행 요청'. 맨 아래에는, 화면을 뒤집어 놓고 적었던 그날의 서명.\n\n친구는 모른다. 휴대전화가 울린다. '오늘 새 쌀 들어왔어. 시간 되면 와.'\n\n숨긴 보증은 구원이 아니라, 선택을 빼앗은 빚이다.",
+          effects: { money: "=0", rel: -1 } },
+        { when: { brew: [4, 5] },
+          text: "현재. 폐업한 목욕탕이었던 자리에서 창문 달이 익는다. 깨진 파란 타일, 높은 천장, 탕 바닥에 고인 달빛 같은 라벨.\n\n\"여긴 물이 아직 길을 알고 있네\" — 그날 친구가 했던 말대로다.\n\n빚은 무겁다. 그러나 그 숫자는 탁자 위에 펼쳐져 있고, 둘 다 안다. 통장은 다시 얇아졌지만, 감춘 것은 없다.",
+          effects: { money: -1, rel: +1 } },
+        { text: "현재. 퇴거는 결국 왔다.\n\n버티던 자리의 문은 닫혔고, 그 창가에는 유리 칸막이가 들어섰다. 창문 달의 마지막 병들은 동네 주점 몇 곳의 냉장고에 남아 있다.\n\n잃은 것이 사람이 아니라는 것. 그것만이 그날의 선택이 지킨 것이다.",
+          effects: { brew: "=0", resp: +1 } }
+      ],
+      choices: [
+        { label: "마지막 알약을 꺼내 든다", to: "마지막질문" }
+      ]
+    },
+
+    "마지막질문": {
+      turn: 9,
+      text: "다섯 알 중 네 알을 썼다. 고치고, 막고, 지키고, 숨기는 데.\n\n마지막 알약으로, 언제 돌아가야 하는가?",
+      question: {
+        options: [
+          "알약을 처음 발견한 그 자리",
+          "보증 도장을 찍은 그날",
+          "2008년, 제안을 받던 그날",
+          "친구를 처음 만난 날"
+        ],
+        answer: "친구를 처음 만난 날",
+        to: "엔딩",
+        wrongTo: "재고"
+      }
+    },
+
+    "재고": {
+      turn: 9,
+      text: "…아니다.\n\n그날로 돌아가도, 당신은 또 무언가를 고치거나 숨기려 들 것이다.",
+      choices: [
+        { label: "다시 생각한다", to: "마지막질문" }
+      ]
+    },
+
+    "엔딩": {
+      turn: 10,
+      text: "마지막 알약. 미래 정보도, 보증서도 없이 도착한 어린 날.\n\n친구가 말한다.\n\n\"숨바꼭질 하자.\"",
+      end: true
+    }
+  }
+};
+
+/* ═══ 2. 엔진 — 건드리지 않는다 ═══ */
+const state = {};
+function resetState(){ Object.assign(state, GAME.initialState); }
+function clamp(v){ return Math.max(0, Math.min(5, v)); }
+function applyEffects(eff){
+  if(!eff) return;
+  for(const k in eff){
+    const v = eff[k];
+    state[k] = clamp(typeof v === "string" ? parseInt(v.slice(1), 10) : state[k] + v);
+  }
+}
+function matches(when){
+  if(!when) return true;
+  return Object.keys(when).every(k => state[k] >= when[k][0] && state[k] <= when[k][1]);
+}
+function renderPanel(){
+  document.getElementById("panel").innerHTML = GAME.panel
+    .map(p => p.name + " <b>" + p.labels[state[p.key]] + "</b>")
+    .join(" &nbsp;·&nbsp; ");
+}
+function go(id){
+  const n = GAME.nodes[id]; if(!n){ console.error("없는 노드: " + id); return; }
+  let text = n.text;
+  if(n.variants){
+    const v = n.variants.find(v => matches(v.when));
+    text = v.text;
+    applyEffects(v.effects);
+  }
+  document.getElementById("turn").textContent = n.turn ? n.turn + "/" + GAME.totalTurns : "";
+  document.getElementById("text").innerHTML = text.replace(/\n/g, "<br>");
+  renderPanel();
+  const c = document.getElementById("choices"); c.innerHTML = "";
+  const slot = document.getElementById("itch-slot"); slot.innerHTML = "";
+  if(n.question){
+    const q = n.question;
+    q.options.forEach(opt => {
+      const b = document.createElement("button"); b.className = "choice"; b.textContent = opt;
+      b.onclick = () => go(opt === q.answer ? q.to : q.wrongTo);
+      c.appendChild(b);
+    });
+  } else {
+    (n.choices || []).forEach(ch => {
+      const b = document.createElement("button"); b.className = "choice"; b.textContent = ch.label;
+      b.onclick = () => { applyEffects(ch.effects); go(ch.to); };
+      c.appendChild(b);
+    });
+  }
+  if(n.end){
+    if(GAME.itchUrl){
+      const a = document.createElement("a"); a.href = GAME.itchUrl; a.textContent = GAME.itchUrl;
+      slot.appendChild(a);
+    }
+    const b = document.createElement("button"); b.className = "choice"; b.textContent = "처음부터";
+    b.onclick = () => { resetState(); go(GAME.start); }; c.appendChild(b);
+  }
+}
+document.getElementById("title").textContent = GAME.title;
+document.title = GAME.title;
+resetState();
+go(GAME.start);
+</script>
+</body>
+</html>

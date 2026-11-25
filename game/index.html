@@ -10,6 +10,8 @@
   #turn{color:#9a9788;font-size:.85em;letter-spacing:.15em;margin-bottom:.6em}
   #panel{color:#9a9788;font-size:.85em;border:1px solid #2b3a4d;padding:8px 12px;margin-bottom:1.4em}
   #panel b{color:#d8b45a;font-weight:normal}
+  #scene{margin:0 0 1.4em}
+  #scene img{display:block;width:100%;aspect-ratio:16/9;max-height:15em;object-fit:cover;border:1px solid #2b3a4d}
   .choice{display:block;margin:10px 0;padding:10px 16px;border:1px solid #2b3a4d;color:#d8b45a;cursor:pointer;background:none;width:100%;text-align:left;font:inherit}
   .choice:hover{background:rgba(216,180,90,.1)}
   .inspect{display:block;margin:8px 0;padding:8px 16px;border:1px dashed #2b3a4d;color:#9a9788;cursor:pointer;background:none;width:100%;text-align:left;font:inherit;font-size:.95em}
@@ -22,6 +24,7 @@
 <h1 id="title"></h1>
 <div id="turn"></div>
 <div id="panel"></div>
+<figure id="scene"></figure>
 <div id="text"></div>
 <div id="choices"></div>
 <div id="itch-slot"></div>
@@ -37,6 +40,23 @@ const GAME = {
 
   start: "프롤로그",
   totalTurns: 10,
+
+  /* 장면 스틸 — game/assets/stills/ 아래 로컬 파일만 쓴다.
+     노드의 visual 키가 이 맵을 가리킨다. 키가 없는 노드(프롤로그·기억지도·엔딩)는 이미지 없음. */
+  visuals: {
+    brewery_2008:          { src: "assets/stills/brewery_2008.png",
+                             alt: "2008년 공장지대의 작은 양조장 사무실. 쌀 포대와 발효통 곁에 머리에 수건을 두른 사람의 뒷모습" },
+    shared_office_current: { src: "assets/stills/shared_office_current.png",
+                             alt: "공유 오피스로 리모델링된 옛 양조장 내부. 책상 위에 오래된 라벨 서류철이 놓여 있다" },
+    phone_and_vat:         { src: "assets/stills/phone_and_vat.png",
+                             alt: "밤의 양조장. 발효통 옆, 어두운 휴대폰 위에 쌀가루 묻은 손이 멈춰 있다" },
+    redevelopment_alley:   { src: "assets/stills/redevelopment_alley.png",
+                             alt: "푸른 저녁의 공장 골목. 셔터가 반쯤 내려진 작은 양조장과 빈 게시판" },
+    bathhouse_moon:        { src: "assets/stills/bathhouse_moon.png",
+                             alt: "폐업한 목욕탕 내부. 파란 타일과 높은 창, 빈 탕 바닥에 고인 달빛과 발효 설비" },
+    letter_bottle_night:   { src: "assets/stills/letter_bottle_night.png",
+                             alt: "밤의 현관 문턱. 등기 봉투와 막걸리 한 병, 희미하게 빛나는 휴대폰" }
+  },
 
   /* 표시 상태(rel·brew·money·resp)는 0~5.
      나머지는 화면에 보이지 않는 숨은 기록.
@@ -81,6 +101,7 @@ const GAME = {
 
     "1_개입": {
       turn: 1,
+      visual: "brewery_2008",
       text: "2008년, 금융위기 직후. 스물일곱의 당신이 공장지대 한켠, 친구의 작은 양조장 사무실에 앉아 있다.\n\n문가에는 쌀 포대가 어깨에 얹는 순서대로 세 자루 기대어 있다. 친구는 머리에 두른 수건으로 이마를 훔치며, 갓 인쇄된 생산표를 책상에 편다. 잉크 냄새 위로 누룩 냄새가 얹힌다. 당신이 그린 창문 달 라벨 시안이 그 옆에 핀으로 꽂혀 있다.\n\n무직인 당신에게 친구는 보증까지 서 주었다. 그리고 오늘, 친구가 손을 내민다.\n\n\"우리 같이 양조장 하자.\"\n\n통장에는 친구의 보증으로 마련한 돈이 있고, 당신은 미래를 안다.",
       inspects: [
         { label: "생산표와 보증서의 가장자리를 살펴본다", trace: "t_edge",
@@ -100,6 +121,7 @@ const GAME = {
 
     "1_현재": {
       turn: 2,
+      visual: "shared_office_current",
       variants: [
         { when: { money: [3, 5] },
           text: "시장으로 옮긴 돈은 불어나 있었다. 현재로 돌아온 당신은 부자다.\n\n그러나 친구는 이미 세상에 없다. 당신의 성공을 가장 가까이서 지켜본 친구는 양조장과 자기 돈으로 레버리지 투자에 뛰어들었고, 빚과 수치심과 고립이 몇 년에 걸쳐 겹겹이 쌓였다.\n\n양조장이 있던 건물은 리모델링된 공유 오피스가 되었다. 유리 칸막이, 무향의 공조 — 쌀 냄새도 잉크 냄새도 없는 공기. 입주한 투자 컨설팅 업체는 당신이 투자한 회사다.\n\n로비에 서서, 당신은 한 문장을 삼킨다.\n\n이 돈의 첫 보증인은 그 애였다.",
@@ -138,6 +160,7 @@ const GAME = {
 
     "2_개입": {
       turn: 3,
+      visual: "phone_and_vat",
       text: "알약이 당신을 데려간 곳은 — 친구가 처음 투자 이야기를 꺼내던 날의 사무실이다.\n\n친구는 발효통 곁에 서서 휴대폰을 쥐고 있다. 화면과 발효통의 온도계를 번갈아 보다가, 별일 아니라는 듯 묻는다.\n\n\"요즘 다들 하는 그 투자… 나도 조금 해볼까?\"\n\n물음의 끝이 반쯤 웃음에 묻힌다. 당신은 이 질문의 무게를 안다. 그 뒤에 있는 것이 욕심이 아니라, 뒤처지고 싶지 않은 마음이라는 것도.",
       extras: [
         { when: { c_label: [1, 5] },
@@ -165,6 +188,7 @@ const GAME = {
 
     "2_현재": {
       turn: 4,
+      visual: "phone_and_vat",
       variants: [
         { when: { confess: [1, 5], money: [3, 5] },
           text: "끝을 봤다는 말은, 이 세계에는 닿지 못했다.\n\n현재는 달라지지 않았다. 친구는 없다. 앞서 가 있는 사람의 경고는 이렇게만 들렸을 것이다 — 너는 처음부터 알고 있었구나. 알면서 혼자 벌었구나.",
@@ -208,6 +232,7 @@ const GAME = {
 
     "3_개입": {
       turn: 5,
+      visual: "brewery_2008",
       text: "세 번째 알약. 2008년, 친구가 손을 내밀던 그날로 다시 돌아온다.\n\n\"우리 같이 양조장 하자.\"\n\n책상 위에는 창문 달 첫 라벨의 시안이, 그 옆에는 동업 제안을 적어 둔 메모가 놓여 있다. 그 라벨은 남의 술에 그려 준 그림이 아니라, 같이 하자던 날의 대답으로 만들던 것이었다.",
       extras: [
         { when: { c_paper: [1, 5] },
@@ -236,6 +261,7 @@ const GAME = {
 
     "3_현재": {
       turn: 6,
+      visual: "redevelopment_alley",
       variants: [
         { when: { money: [3, 5], cosign: [1, 5] },
           text: "계약서에 이름을 올린 날부터, 부는 천천히 녹았다. 설비로, 쌀로, 세월로.\n\n통장은 얇아졌지만 그 자리에 친구가 살아 서 있다. 함께 빚은 병들이 동네 주점으로 나간다.\n\n그리고 골목 어귀에 — 재개발 공고가 붙었다.",
@@ -278,6 +304,7 @@ const GAME = {
 
     "4_개입": {
       turn: 7,
+      visual: "bathhouse_moon",
       text: "네 번째 알약. 재개발 조합 소문이 처음 돌던 날로 돌아온다.\n\n친구는 소문을 믿지 않는다. \"난 여기서 계속 빚을래.\"\n\n동네에는 폐업한 목욕탕이 하나 나와 있다. 깨진 파란 타일, 높은 천장, 눈높이보다 한참 위의 작은 창. 부동산에서 받아 온 조건 서류가 당신 가방 안에 있다 — 보증금과 설비 전환 비용의 숫자도 함께.",
       extras: [
         { when: { c_bottle: [1, 5] },
@@ -305,6 +332,7 @@ const GAME = {
 
     "4_현재": {
       turn: 8,
+      visual: "letter_bottle_night",
       variants: [
         { when: { money: [3, 5], cosign: [0, 0], labelonly: [0, 0] },
           text: "소문의 날에 무엇을 두고 왔든, 이 세계의 창가에는 유리 칸막이가 서 있다.\n\n달라진 것은 당신이 그 앞을 그냥 지나치지 못하게 되었다는 것뿐이다.",
@@ -418,6 +446,21 @@ function renderPanel(){
     .join(" &nbsp;·&nbsp; ");
 }
 function setText(t){ document.getElementById("text").innerHTML = t.replace(/\n/g, "<br>"); }
+/* 장면 스틸: 노드의 visual 키를 그린다. 키가 없으면 완전히 감춘다.
+   showSub(살펴보기·흔적 하위 장면)은 이 영역을 건드리지 않으므로 현재 장면이 유지된다. */
+function renderScene(n){
+  const f = document.getElementById("scene");
+  const v = n.visual && GAME.visuals[n.visual];
+  f.innerHTML = "";
+  if(v){
+    const img = document.createElement("img");
+    img.src = v.src; img.alt = v.alt;
+    f.appendChild(img);
+    f.style.display = "";
+  } else {
+    f.style.display = "none";
+  }
+}
 function button(label, cls, fn){
   const b = document.createElement("button"); b.className = cls; b.textContent = label;
   b.onclick = fn; return b;
@@ -443,6 +486,7 @@ function go(id){
 function renderCurrent(){
   const n = current.node;
   document.getElementById("turn").textContent = n.turn ? n.turn + "/" + GAME.totalTurns : "";
+  renderScene(n);
   setText(current.text);
   renderPanel();
   const c = document.getElementById("choices"); c.innerHTML = "";

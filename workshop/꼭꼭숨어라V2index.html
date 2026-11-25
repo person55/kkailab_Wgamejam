@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>꼭꼭 숨어라</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:#0a0d12;color:#fff;font-family:"Noto Serif KR",serif;overflow:hidden}
+
+  #stage{position:fixed;inset:0;overflow:hidden}
+  #bg,#bg2{position:absolute;inset:0;background-size:cover;background-position:center;
+           transition:opacity .7s ease,filter .5s ease}
+  #bg2{opacity:0}
+  #veil{position:absolute;inset:0;
+        background:linear-gradient(to top,rgba(6,9,14,.92) 0%,rgba(6,9,14,.75) 28%,rgba(6,9,14,.15) 58%,rgba(6,9,14,.05) 100%)}
+
+  #ui{position:absolute;left:0;right:0;bottom:0;padding:0 24px 28px;
+      display:flex;flex-direction:column;align-items:center}
+  #inner{width:100%;max-width:40em}
+
+  h1{font-size:.85rem;letter-spacing:.45em;font-weight:400;color:rgba(255,255,255,.55);
+     margin:0 0 14px;text-align:center}
+
+  #text{font-size:1.08rem;line-height:1.95;text-align:center;
+        text-shadow:0 2px 14px rgba(0,0,0,.95),0 0 40px rgba(0,0,0,.7);
+        margin-bottom:18px}
+  .inner{color:rgba(190,205,225,.82);font-style:italic}
+  .sound{color:rgba(160,185,215,.8);font-style:italic;margin-top:1em;font-size:.95rem}
+
+  .choice{display:block;margin:8px 0;padding:13px 20px;width:100%;text-align:center;
+          font:inherit;font-size:.98rem;color:#fff;cursor:pointer;
+          background:rgba(28,32,40,.62);backdrop-filter:blur(8px);
+          border:1px solid rgba(255,255,255,.16);border-radius:3px;
+          transition:background .2s,border-color .2s}
+  .choice:hover{background:rgba(46,52,62,.82);border-color:rgba(255,255,255,.4)}
+
+  select,input{font:inherit;font-size:.98rem;width:100%;margin:8px 0;padding:13px 20px;
+               color:#fff;background:rgba(28,32,40,.62);backdrop-filter:blur(8px);
+               border:1px solid rgba(255,255,255,.16);border-radius:3px;text-align:center;
+               text-align-last:center}
+  select option{background:#1b1f27;color:#fff}
+
+  #clues{margin-top:16px;font-size:.78rem;letter-spacing:.06em;text-align:center;
+         color:rgba(255,255,255,.42);line-height:1.8;
+         text-shadow:0 1px 8px rgba(0,0,0,.9)}
+  .on{color:rgba(232,206,140,.95)}
+
+  #snd{position:absolute;top:16px;right:18px;z-index:5;
+       width:34px;height:34px;line-height:32px;text-align:center;cursor:pointer;
+       font-family:sans-serif;font-size:15px;color:rgba(255,255,255,.55);
+       background:rgba(28,32,40,.5);backdrop-filter:blur(6px);
+       border:1px solid rgba(255,255,255,.14);border-radius:50%;
+       transition:color .2s,border-color .2s}
+  #snd:hover,#inv:hover{color:#fff;border-color:rgba(255,255,255,.4)}
+  #inv{position:absolute;top:16px;right:60px;z-index:5;
+       width:34px;height:34px;line-height:32px;text-align:center;cursor:pointer;
+       font-family:sans-serif;font-size:14px;color:rgba(255,255,255,.55);
+       background:rgba(28,32,40,.5);backdrop-filter:blur(6px);
+       border:1px solid rgba(255,255,255,.14);border-radius:50%;
+       transition:color .2s,border-color .2s}
+</style></head>
+<body>
+<div id="stage">
+  <div id="bg"></div><div id="bg2"></div><div id="veil"></div>
+  <button id="inv" aria-label="화면 반전 전환">◐</button>
+  <button id="snd" aria-label="소리 켜기 끄기">♪</button>
+  <div id="ui"><div id="inner">
+    <h1 id="title"></h1>
+    <div id="text"></div>
+    <div id="choices"></div>
+    <div id="clues"></div>
+  </div></div>
+</div>
+
+<script>
+/* ═══ 0. 그림 주소 — 바꾸려면 여기 ═══ */
+const CDN = "https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/";
+const IMG = {
+  인트로:    CDN+"hf_20260815_053522_35284ea7-9236-4fc3-9d5d-7215d60ac5a1.png",
+  골목:      CDN+"hf_20260815_042808_df6acfed-712b-4899-acf4-d8c8f78b40c3.png",
+  바닥의선:  CDN+"hf_20260815_042808_d46ee0fa-8739-453e-8c6a-5ded741fbede.png",
+  놀이터:    CDN+"hf_20260815_042807_f1034ab8-91c5-4667-9972-6aa843099454.png",
+  미끄럼틀:  CDN+"hf_20260815_042807_fabef6aa-0b67-4a9f-b23c-b5f1aa8d27e4.png",
+  지하통로:  CDN+"hf_20260815_042807_8c18910b-00cc-4e82-a445-fdfab91f3c40.png",
+  공사장:    CDN+"hf_20260815_042807_187affff-7485-453e-993e-a0146f36aad1.png",
+  벽돌뒤:    CDN+"hf_20260815_042807_618d5582-84d8-4b29-941b-c7a7f9c26f38.png",
+  산초입:    CDN+"hf_20260815_042808_629caf00-452f-4083-821e-06cbd92c56e7.png",
+  꽃밭:      CDN+"hf_20260815_042808_ec806e19-f455-42d4-af3c-bc8fd20e0759.png",
+  꽃밭안쪽:  CDN+"hf_20260815_042807_98a5156d-98a1-45d3-a57b-80b58f2b4613.png",
+  계단:      CDN+"hf_20260815_042807_ca392923-48a8-440a-b25f-945f5d996961.png",
+  옥상:      CDN+"hf_20260815_042808_96eb55f9-7ccc-42f9-9150-f1d643d6c6e7.png",
+  파이프:    CDN+"hf_20260815_043901_00a384b0-bcc2-4848-84f8-c78ed4f8599b.png",
+  개구멍:    CDN+"hf_20260815_043900_1dbce00b-dfde-44f1-bd15-c5b1e9faf36f.png",
+  건너뛰기:  CDN+"hf_20260815_043901_cb307f93-b9b5-4047-8062-d3ecbbec7a08.png",
+  기억엔딩:  CDN+"hf_20260815_043901_571c3d2c-1a5c-4fbb-a7a5-e78882ea052c.png",
+  골목엔딩:  CDN+"hf_20260815_043900_0434c73c-1da8-42f1-bea9-c361f800b7cd.png"
+};
+
+/* ═══ 1. 게임 데이터 — 고치는 곳은 여기뿐 ═══ */
+
+const FRIENDS = ["향숙","창희","성빈","호진","혜연","인정","경환"];  // 호진이는 끝에 나타난다
+
+const GAME = {
+  title: "꼭꼭 숨어라",
+  start: "첫질문",
+  nodes: {
+
+    "첫질문": {
+      img: "인트로",
+      snd: { dist: .85, tone: "open" },
+      text: "어? 애들이 어디 갔지?\n\n이제 뭘 할까.",
+      question: { options: ["그냥 기다린다","찾으러 간다","모르겠다"],
+                  answer: "___아직없음___", to: "골목", wrongTo: "골목" }
+      // 무엇을 골라도 골목에서 시작한다. 아직 아무도 답을 모른다.
+    },
+
+    /* ── 중심 ── */
+    "골목": {
+      img: "골목",
+      snd: { dist: .75, tone: "open" },
+      text: "해가 밝다. 골목에 아무도 없다.\n나무 그림자가 길게 누워 있다.",
+      alt: { flag: "숫자", text: "골목으로 돌아왔다.\n그림자가 아까보다 짧아져 있다.\n<span class='inner'>내가 얼마나 돌아다닌 거지.</span>" },
+      sound: "아주 멀리서 누가 숫자를 센다.",
+      choices: [
+        { label: "바닥에 그린 선을 본다", to: "바닥의선" },
+        { label: "놀이터로 간다", to: "놀이터" },
+        { label: "꽃밭으로 간다", to: "꽃밭" },
+        { label: "계단을 오른다", to: "계단" },
+        { label: "소리 나는 쪽으로 간다", to: "마지막질문", requires: ["숫자","발자국","숨바꼭질노래"], needFriends: 6 }
+      ]
+    },
+
+    "바닥의선": {
+      img: "바닥의선",
+      snd: { dist: .75, tone: "open" },
+      text: "내가 그린 선들이다. 아무 의미도 없다.\n그런데 하나는 숫자를 쓰다 만 것 같다. 열 몇에서 끊겼다.\n<span class='inner'>내가 이걸 왜 쓰고 있었더라.</span>",
+      gives: "숫자",
+      choices: [ { label: "일어선다", to: "골목" } ]
+    },
+
+    /* ── 놀이터 ── */
+    "놀이터": {
+      img: "놀이터",
+      snd: { dist: .6, tone: "open" },
+      text: "빈 그네가 아직 흔들리고 있다.\n앉는 판에 성빈이가 새겨놓은 글자가 그대로다.\n<span class='inner'>방금까지 앉아 있었네. 어디 갔지.</span>",
+      finds: "성빈",
+      sound: "숫자 세는 소리. 아까보다 조금 또렷하다.",
+      choices: [
+        { label: "미끄럼틀 뒤를 본다", to: "미끄럼틀" },
+        { label: "지하통로로 간다", to: "지하통로" },
+        { label: "골목으로 돌아간다", to: "골목" }
+      ]
+    },
+
+    "미끄럼틀": {
+      img: "미끄럼틀",
+      snd: { dist: .6, tone: "open" },
+      text: "아무도 없다.\n대신 머리핀 하나가 떨어져 있다. 향숙이 거다.\n이거 잃어버리면 찾을 때까지 안 놀 앤데. 갖다줘야지.\n<span class='inner'>…근데 향숙이가 어디 있더라.</span>",
+      finds: "향숙",
+      choices: [ { label: "주머니에 넣는다", to: "놀이터" } ]
+    },
+
+    "지하통로": {
+      img: "지하통로",
+      snd: { dist: .5, tone: "tunnel", song: { vol:.05, cut:true, cold:1, wait:3.5 } },
+      text: "어른들이 가지 말라던 곳. 어둡고 축축하다.\n안쪽에서 웃음소리가 새어나왔다가 뚝 끊긴다.\n창희 웃음이다. 저 웃음은 아무도 못 흉내 낸다.\n<span class='inner'>창희야, 하고 부르려는데 이름이 잘 안 나온다.</span>",
+      finds: "창희",
+      sound: "여기서는 숫자 소리가 울린다. 어느 쪽에서 오는지 알 수 없다.",
+      choices: [
+        { label: "공사장 쪽으로 나간다", to: "공사장" },
+        { label: "놀이터로 돌아간다", to: "놀이터" }
+      ]
+    },
+
+    /* ── 공사장 · 산 ── */
+    "공사장": {
+      img: "공사장",
+      snd: { dist: .55, tone: "open" },
+      text: "들어가면 안 되는 곳.\n모래 위에 발자국이 어지럽다. 여러 명이 뛰어다닌 자국이다.\n쌓아둔 벽돌 뒤에서 뭔가 스치는 소리.",
+      sound: "숫자 세는 소리가 등 뒤에서 들린다. 돌아보면 아무도 없다.",
+      choices: [
+        { label: "벽돌 뒤를 본다", to: "벽돌뒤" },
+        { label: "산 쪽으로 올라간다", to: "산초입" },
+        { label: "큰 파이프 속으로 기어든다", to: "파이프", requires: ["동네지도"] },
+        { label: "지하통로로 돌아간다", to: "지하통로" }
+      ]
+    },
+
+    "벽돌뒤": {
+      img: "벽돌뒤",
+      snd: { dist: .55, tone: "open" },
+      text: "고양이가 튀어나가 사라진다.\n바닥에 딱지 몇 장이 흩어져 있다. 경환이가 늘 들고 다니던 거다.\n이거 없어지면 얘 운다. 챙겨놔야지.\n<span class='inner'>…얜 어디서 이걸 흘린 걸까.</span>",
+      finds: "경환",
+      choices: [ { label: "주워 담는다", to: "공사장" } ]
+    },
+
+    "산초입": {
+      img: "산초입",
+      snd: { dist: .9, tone: "forest" },
+      text: "넓은 산. 넓은 사람이 있다던 곳.\n아무도 없다.\n젖은 흙에 발자국이 남아 있는데, 전부 마을 쪽을 향해 있다.\n아무도 산으로 올라가지 않았다.\n<span class='inner'>다 돌아갔네. 나만 여기까지 왔나.</span>",
+      gives: "발자국",
+      sound: "여기까지 와도 숫자 소리는 줄지 않는다. 오히려 마을 쪽에서 난다.",
+      choices: [ { label: "돌아선다", to: "공사장" } ]
+    },
+
+    "파이프": {
+      img: "파이프",
+      snd: { dist: .5, tone: "tunnel" },
+      text: "무릎으로 기어간다. 소리가 안쪽에서 웅웅 울린다.\n생각보다 길다. 이렇게 길었나.\n반대쪽 빛으로 나오니 골목 뒤편이다.\n<span class='inner'>여기로 나올 줄 알았는데, 나무가 있던 쪽이 반대다.</span>",
+      choices: [ { label: "골목으로 들어선다", to: "골목" } ]
+    },
+
+    /* ── 꽃밭 ── */
+    "꽃밭": {
+      img: "꽃밭",
+      snd: { dist: .6, tone: "forest" },
+      text: "누가 밟고 지나간 자리가 길처럼 나 있다.\n꺾인 꽃대가 아직 물기를 머금었다.",
+      sound: "숫자 세는 소리가 여기서도 들린다.",
+      choices: [
+        { label: "밟힌 자리를 따라간다", to: "꽃밭안쪽" },
+        { label: "개구멍으로 빠져나간다", to: "개구멍", requires: ["동네지도"] },
+        { label: "골목으로 돌아간다", to: "골목" }
+      ]
+    },
+
+    "꽃밭안쪽": {
+      img: "꽃밭안쪽",
+      snd: { dist: .6, tone: "forest" },
+      text: "길이 끊긴다.\n실내화 한 짝이 놓여 있다. 안쪽에 이름이 적혀 있다. 혜연.\n한 짝만 벗고 어딜 간 거야. 이거 없으면 학교 어떻게 가려고.\n<span class='inner'>…왜 벗고 갔지.</span>",
+      finds: "혜연",
+      choices: [ { label: "들고 나온다", to: "꽃밭" } ]
+    },
+
+    "개구멍": {
+      img: "개구멍",
+      snd: { dist: .45, tone: "open" },
+      text: "담장 아래 뚫린 구멍. 애들만 아는 길이다.\n어깨를 비틀어 빠져나간다.\n나오니 계단 아래다.\n<span class='inner'>여기랑 꽃밭이 붙어 있었나. 몰랐는데.</span>",
+      choices: [ { label: "계단을 본다", to: "계단" } ]
+    },
+
+    /* ── 계단 · 옥상 ── */
+    "계단": {
+      img: "계단",
+      snd: { dist: .35, tone: "high" },
+      text: "좁은 계단. 한 칸씩 오를 때마다 소리가 울린다.\n위에서 누가 뛰어가는 소리가 났다.\n난간에 인정이 가방이 걸려 있다. 저걸 두고 갈 애가 아닌데.\n<span class='inner'>다들 뭘 두고 어디로 간 거지.</span>",
+      finds: "인정",
+      sound: "계단을 오를수록 숫자 소리가 커진다.",
+      choices: [
+        { label: "옥상까지 오른다", to: "옥상" },
+        { label: "골목으로 내려간다", to: "골목" }
+      ]
+    },
+
+    "옥상": {
+      img: "옥상",
+      snd: { dist: .25, tone: "high", song: { vol:.14, cut:true, cold:1, wait:2.2 } },
+      text: "동네가 다 내려다보인다. 놀이터도, 공사장도, 꽃밭도, 골목도.\n어디에도 아무도 없다.\n여기서 보니까 길이 다 이어져 있다. 공사장 파이프도, 꽃밭 담장 밑 구멍도.\n애들은 늘 저리로 다녔지.\n\n난간에 누가 부르다 만 노래가 분필로 적혀 있다.\n\n꼭꼭 숨어라\n머리카락 보일라\n\n<span class='inner'>…이거 누가 쓴 거야.</span>",
+      gives: "숨바꼭질노래",
+      also: "동네지도",
+      sound: "여기서는 숫자 소리가 아래에서 올라온다. 골목 쪽이다.",
+      choices: [
+        { label: "옆 건물로 건너뛴다", to: "건너뛰기" },
+        { label: "계단으로 내려간다", to: "계단" }
+      ]
+    },
+
+    "건너뛰기": {
+      img: "건너뛰기",
+      snd: { dist: .3, tone: "high" },
+      text: "옆 건물 옥상으로 건너뛴다. 애들이 하던 대로.\n담을 타고 내려오니 놀이터 뒤편이다.\n<span class='inner'>이 길을 어떻게 알고 있었지.</span>",
+      choices: [ { label: "놀이터로 들어간다", to: "놀이터" } ]
+    },
+
+    /* ── 엔딩 ── */
+    "마지막질문": {
+      img: "골목",
+      snd: { dist: 0, tone: "open" },
+      text: "골목이다.\n숫자 세는 소리가 바로 여기서 난다. 아주 가까이서.\n\n돌아서는데 호진이가 서 있다.\n언제부터 거기 있었는지 모르겠다.\n\n호진이가 묻는다.\n\"너, 뭐 하고 있었어?\"\n\n<span class='inner'>주머니가 무겁다. 머리핀, 딱지, 실내화, 가방.\n다 남의 것이다.</span>",
+      question: { options: ["너희 기다리고 있었어","너희 찾고 있었어","너희 물건 갖다주려고"],
+                  answer: "너희 찾고 있었어", to: "기억엔딩", wrongTo: "골목엔딩" }
+    },
+
+    "기억엔딩": {
+      img: "기억엔딩",
+      snd: { dist: 1, tone: "open", stop: true, song: { vol:.15, cut:false, cold:0, wait:2.6 } },
+      text: "호진이가 웃는다.\n\"그럼 나 잡은 거네.\"\n\n아, 하고 소리가 났다. 내 입에서.\n\n열둘까지 세다 말았다. 나무에 얼굴을 묻고,\n열둘까지 세고, 그다음이 기억이 안 나서\n그냥 앉아 있었다. 계속.\n\n주머니에서 머리핀이 떨어진다.\n담장 위에서 향숙이가 소리친다. \"야! 그거 내 거야!\"\n\n여기저기서 애들이 튀어나온다.\n다들 아까부터 거기 있었다.",
+      end: true
+    },
+    "골목엔딩": {
+      img: "골목엔딩",
+      snd: { dist: 1, tone: "dusk", stop: true, song: { vol:.13, cut:true, cold:1, wait:3 } },
+      text: "호진이가 잠깐 나를 본다.\n뭔가 말하려다 만다.\n\"…응. 그럼 여기 있어.\"\n\n그리고 뛰어간다.\n골목 끝에서 웃음소리가 나고, 여러 명이 흩어지는 소리가 나고,\n조용해진다.\n\n해가 넘어간다.\n나는 주머니가 무거운 채로 앉아 있다.\n갖다줄 사람을 아직 못 찾았다.",
+      end: true
+    }
+  }
+};
+
+/* ═══ 사운드 엔진 — 전부 브라우저에서 합성. 파일 없음 ═══ */
+const SND = (() => {
+  let ac, on = true, master, ambGain, ambFilt, cntGain, cntFilt, echo, echoGain, timer, cur = {dist:.8, tone:"open"};
+
+  function noiseBuf(){
+    const n = ac.sampleRate * 4, b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+    let last = 0;
+    for(let i=0;i<n;i++){ const w = Math.random()*2-1; last = (last + .02*w)/1.02; d[i] = last*3.5; }
+    return b;
+  }
+
+  function init(){
+    if(ac) return;
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = on ? .9 : 0; master.connect(ac.destination);
+
+    // 바람 / 공기 — 필터 건 노이즈
+    const src = ac.createBufferSource(); src.buffer = noiseBuf(); src.loop = true;
+    ambFilt = ac.createBiquadFilter(); ambFilt.type = "lowpass"; ambFilt.frequency.value = 700;
+    ambGain = ac.createGain(); ambGain.gain.value = .055;
+    src.connect(ambFilt); ambFilt.connect(ambGain); ambGain.connect(master); src.start();
+
+    // 숫자 세는 소리 — 거리에 따라 흐려지는 펄스
+    cntFilt = ac.createBiquadFilter(); cntFilt.type = "lowpass"; cntFilt.frequency.value = 500;
+    cntGain = ac.createGain(); cntGain.gain.value = .1;
+    cntFilt.connect(cntGain); cntGain.connect(master);
+
+    echo = ac.createDelay(1); echo.delayTime.value = .26;
+    echoGain = ac.createGain(); echoGain.gain.value = 0;
+    cntFilt.connect(echo); echo.connect(echoGain); echoGain.connect(echo); echoGain.connect(master);
+
+    tick();
+  }
+
+  // 한 번의 "세는" 소리. 사람 목소리가 아니라, 멀리서 웅얼거리는 두 음절.
+  function count(){
+    if(!ac || cur.stop) return;
+    const t = ac.currentTime;
+    [0, .17].forEach((off, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "triangle";
+      o.frequency.setValueAtTime(i ? 232 : 196, t+off);
+      o.frequency.exponentialRampToValueAtTime(i ? 205 : 214, t+off+.16);
+      g.gain.setValueAtTime(0, t+off);
+      g.gain.linearRampToValueAtTime(.9, t+off+.03);
+      g.gain.exponentialRampToValueAtTime(.001, t+off+.22);
+      o.connect(g); g.connect(cntFilt); o.start(t+off); o.stop(t+off+.3);
+    });
+  }
+
+  function tick(){
+    clearTimeout(timer);
+    count();
+    timer = setTimeout(tick, 2400 + Math.random()*900);
+  }
+
+
+  // 「꼭꼭 숨어라 머리카락 보일라」 — 전래동요. 단조 5음계로 낮춰서 싸늘하게.
+  // A단 5음계: A3 220 / C4 261.63 / D4 293.66 / E4 329.63 / G4 392
+  const A3=220, C4=261.63, D4=293.66, E4=329.63, G4=392;
+  //          꼭    꼭    숨    어    라   |  머    리    카    락    보    일    라
+  const MELODY = [E4,  E4,  D4,  C4,  D4,   null, C4,  D4,  E4,  E4,  D4,  C4,  A3];
+
+  let songTimer;
+  // cut: 마지막 음절을 안 부르고 끊는다 ("부르다 만 노래")
+  function song(opt){
+    if(!ac || !on) return;
+    const o = Object.assign({ vol:.13, cut:true, cold:1, delay:0 }, opt || {});
+    const t0 = ac.currentTime + o.delay, step = .46;
+    const notes = o.cut ? MELODY.slice(0, MELODY.length-1) : MELODY;
+
+    const bus = ac.createGain(); bus.gain.value = o.vol;
+    const lp  = ac.createBiquadFilter(); lp.type="lowpass";
+    lp.frequency.value = 900 + (1-o.cold)*1600;               // 차가울수록 먹먹하게
+    const dl  = ac.createDelay(1); dl.delayTime.value = .33;
+    const fb  = ac.createGain(); fb.gain.value = .34 + o.cold*.14;
+    bus.connect(lp); lp.connect(master);
+    lp.connect(dl); dl.connect(fb); fb.connect(dl); fb.connect(master);
+
+    notes.forEach((f, i) => {
+      if(f === null) return;                                   // 쉼표
+      const t = t0 + i*step;
+      // 두 음을 미세하게 어긋나게 겹친다 — 이게 싸늘함의 정체
+      [0, o.cold*13].forEach((cents, k) => {
+        const osc = ac.createOscillator(), g = ac.createGain();
+        osc.type = k ? "sine" : "triangle";
+        osc.frequency.value = f; osc.detune.value = cents;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(k ? .34 : .5, t + .05);
+        g.gain.setValueAtTime(k ? .34 : .5, t + step*.62);
+        g.gain.exponentialRampToValueAtTime(.001, t + step*1.15);
+        osc.connect(g); g.connect(bus);
+        osc.start(t); osc.stop(t + step*1.2);
+      });
+    });
+  }
+
+  const TONE = {
+    open:   { amb: 700,  ambV: .055, echo: .06 },
+    tunnel: { amb: 260,  ambV: .105, echo: .45 },
+    high:   { amb: 1500, ambV: .085, echo: .10 },
+    forest: { amb: 900,  ambV: .075, echo: .05 },
+    dusk:   { amb: 420,  ambV: .05,  echo: .08 }
+  };
+
+  function set(cfg){
+    cur = cfg || {dist:.8, tone:"open"};
+    clearTimeout(songTimer);
+    if(!ac) return;
+    if(cur.song) songTimer = setTimeout(() => song(cur.song), (cur.song.wait || 1) * 1000);
+    const t = ac.currentTime, T = TONE[cur.tone] || TONE.open, d = cur.dist;
+    ambFilt.frequency.setTargetAtTime(T.amb, t, .5);
+    ambGain.gain.setTargetAtTime(T.ambV, t, .5);
+    echoGain.gain.setTargetAtTime(T.echo, t, .5);
+    // 멀수록 작고 먹먹하게
+    cntFilt.frequency.setTargetAtTime(300 + (1-d)*2200, t, .6);
+    cntGain.gain.setTargetAtTime(cur.stop ? 0 : .04 + (1-d)*.30, t, .6);
+  }
+
+  function click(){
+    if(!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(680, t);
+    o.frequency.exponentialRampToValueAtTime(340, t+.07);
+    g.gain.setValueAtTime(.06, t); g.gain.exponentialRampToValueAtTime(.001, t+.09);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+.1);
+  }
+
+  function toggle(){
+    on = !on;
+    if(ac) master.gain.setTargetAtTime(on ? .9 : 0, ac.currentTime, .1);
+    return on;
+  }
+
+  return { init, set, click, toggle, song };
+})();
+
+document.getElementById("snd").onclick = e => {
+  e.stopPropagation();
+  document.getElementById("snd").textContent = SND.toggle() ? "♪" : "✕";
+};
+
+/* ═══ 화면 반전 — ◐ 버튼으로 전환 ═══ */
+// 0 원본 · 1 야경 반전(명암만 뒤집고 색은 유지) · 2 완전 반전(색까지 뒤집힘)
+const INV = [
+  { f: "none",                                        label: "○" },
+  { f: "invert(1) hue-rotate(180deg) saturate(1.15)", label: "◐" },
+  { f: "invert(1) saturate(1.05)",                    label: "●" }
+];
+let invMode = 1;
+function applyInv(){
+  const f = INV[invMode].f;
+  document.getElementById("bg").style.filter = f;
+  document.getElementById("bg2").style.filter = f;
+  document.getElementById("inv").textContent = INV[invMode].label;
+}
+document.getElementById("inv").onclick = e => {
+  e.stopPropagation();
+  invMode = (invMode + 1) % INV.length;
+  applyInv();
+};
+applyInv();
+
+/* ═══ 배경 크로스페이드 ═══ */
+let frontIsA = true;
+function setBG(url){
+  const a = document.getElementById("bg"), b = document.getElementById("bg2");
+  const front = frontIsA ? a : b, back = frontIsA ? b : a;
+  back.style.backgroundImage = url ? 'url("'+url+'")' : "none";
+  back.style.filter = INV[invMode].f;
+  back.style.opacity = 1; front.style.opacity = 0;
+  frontIsA = !frontIsA;
+}
+Object.values(IMG).forEach(u => { const i = new Image(); i.src = u; });
+
+/* ═══ 2. 엔진 — 건드리지 않는다 ═══ */
+const flags = new Set();
+const found = new Set();
+
+function go(id){
+  const n = GAME.nodes[id]; if(!n){ alert("없는 노드: " + id); return; }
+  let text = n.text;
+  if(n.alt && flags.has(n.alt.flag)) text = n.alt.text;
+  if(n.gives) flags.add(n.gives);
+  if(n.also)  flags.add(n.also);
+  if(n.finds) found.add(n.finds);
+
+  setBG(n.img && IMG[n.img] ? IMG[n.img] : null);
+  SND.set(n.snd);
+
+  let html = text.replace(/\n/g,"<br>");
+  if(n.sound) html += '<div class="sound">' + n.sound + '</div>';
+  document.getElementById("text").innerHTML = html;
+
+  const c = document.getElementById("choices"); c.innerHTML = "";
+  if(n.question){
+    const q = n.question; let el;
+    if(q.input){ el = document.createElement("input"); }
+    else { el = document.createElement("select");
+      el.innerHTML = '<option value="">— 선택 —</option>' + q.options.map(o=>"<option>"+o+"</option>").join(""); }
+    const b = document.createElement("button"); b.className = "choice"; b.textContent = "대답한다";
+    b.onclick = () => { SND.init(); SND.click(); go(el.value.trim() === q.answer ? q.to : q.wrongTo); };
+    c.append(el, b);
+  } else {
+    (n.choices||[]).forEach(ch => {
+      if(ch.requires && !ch.requires.every(f=>flags.has(f))) return;
+      if(ch.needFriends && found.size < ch.needFriends) return;
+      const b = document.createElement("button"); b.className = "choice"; b.textContent = ch.label;
+      b.onclick = () => { SND.init(); SND.click(); go(ch.to); }; c.appendChild(b);
+    });
+  }
+  if(n.end){
+    const b = document.createElement("button"); b.className = "choice"; b.textContent = "처음부터";
+    b.onclick = () => { SND.click(); flags.clear(); found.clear(); go(GAME.start); }; c.appendChild(b);
+  }
+
+  const names = FRIENDS.map(f => found.has(f) ? '<span class="on">'+f+'</span>' : "·").join("  ");
+  const line2 = flags.size ? "<br>알게 된 것: " + [...flags].join(", ") : "";
+  document.getElementById("clues").innerHTML =
+    "여기 있었다: " + names + "  (" + found.size + "/7)" + line2;
+}
+document.getElementById("title").textContent = GAME.title;
+document.title = GAME.title;
+go(GAME.start);
+</script>
+</body></html>

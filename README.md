@@ -12,7 +12,7 @@
 
 ## 현재 단계
 
-이야기 발산을 시작하기 전의 기반 단계다. `narrative/STORY_SPEC.md`가 **구현 가능** 상태가 되기 전에는 게임 기능을 만들지 않는다.
+해커톤은 종료되었다. 팀의 최종 공개 콘텐츠는 [The Party Was Lovely](https://knuaguy.itch.io/the-party-was-lovely)이며, 종료 기록은 `docs/FINAL_RECORD_2026-08-18.md`에 남긴다. 새 구현·검증·배포는 다음 명령이 있기 전까지 진행하지 않는다.
 
 ## 실행 환경
 

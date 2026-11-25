@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>파티는 즐거워</title>
+<!--
+═══════════════════════════════════════════════════════════════════
+  파티는 즐거워 — 2막 구조 핫스팟 추리 게임
+═══════════════════════════════════════════════════════════════════
+  ◆ 이 파일 하나가 게임 전체입니다. 더블클릭하면 브라우저에서 실행됩니다.
+  ◆ 고칠 곳은 아래 "1. 게임 데이터" 섹션뿐입니다.
+
+  ◆ 단축키 (제작 중에만):
+      H  —  클릭 영역(핫스팟) 표시 방식 전환
+      E  —  편집 모드: 화면에서 드래그하면 좌표 { x, y, w, h } 가 나옵니다
+
+  ◆ 핫스팟은 기본적으로 은은한 점(마커)으로 항상 보입니다.
+    그림과 위치가 어긋나면 E 키로 새 좌표를 찍어 아래 데이터에 넣으세요.
+═══════════════════════════════════════════════════════════════════
+-->
+<style>
+  :root{--ink:#e8e4d8;--ink-dim:#9a9788;--night:#0d1420;--panel:#16202e;
+        --panel-edge:#2b3a4d;--accent:#d8b45a;--accent-dim:#8a7538;--warm:#c96a4a;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--night);color:var(--ink);
+       font-family:"Noto Serif KR","Nanum Myeongjo",serif;min-height:100vh;overflow-x:hidden;}
+  .screen{display:none;width:100%;}
+  .screen.active{display:block;}
+
+  #screen-title{text-align:center;padding:10vh 20px;min-height:100vh;
+    background:radial-gradient(ellipse at 50% 90%,rgba(201,106,74,.28),transparent 62%),
+               linear-gradient(180deg,#0a0f1a 0%,#141c26 55%,#1d2430 100%);
+    background-size:cover;background-position:center;}
+  #screen-title h1{font-size:clamp(2rem,6vw,3.6rem);letter-spacing:.35em;text-indent:.35em;
+    color:var(--accent);margin-bottom:.5em;text-shadow:0 0 40px rgba(0,0,0,.9);}
+  #screen-title .subtitle{color:var(--ink-dim);letter-spacing:.2em;margin-bottom:7vh;
+    text-shadow:0 0 20px rgba(0,0,0,.9);}
+  .lamp{width:80px;height:80px;border-radius:50%;margin:0 auto 5vh;
+    background:radial-gradient(circle at 40% 35%,#f7e6c0,#d9b070 65%,#8a6a3c);
+    box-shadow:0 0 70px 24px rgba(216,180,90,.18);}
+  button.big{font-family:inherit;font-size:1.05rem;letter-spacing:.3em;text-indent:.3em;
+    color:var(--accent);background:rgba(8,12,20,.5);border:1px solid var(--accent-dim);
+    padding:.9em 2.6em;cursor:pointer;transition:background .25s,box-shadow .25s;}
+  button.big:hover{background:rgba(216,180,90,.14);box-shadow:0 0 24px rgba(216,180,90,.15);}
+
+  #screen-intro{text-align:center;padding:18vh 20px;min-height:100vh;cursor:pointer;}
+  #intro-line{font-size:clamp(1.05rem,2.6vw,1.4rem);line-height:2.1;
+    max-width:32em;margin:0 auto 8vh;min-height:5em;}
+  .hint{color:var(--ink-dim);font-size:.82rem;letter-spacing:.1em;}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;
+    max-width:1100px;margin:0 auto;padding:14px 18px;flex-wrap:wrap;gap:8px;}
+  .topbar .place{letter-spacing:.25em;color:var(--accent);}
+  .topbar .right{display:flex;gap:10px;flex-wrap:wrap;}
+  button.small{font-family:inherit;font-size:.82rem;color:var(--ink);background:var(--panel);
+    border:1px solid var(--panel-edge);padding:.5em 1.1em;cursor:pointer;letter-spacing:.1em;}
+  button.small:hover{border-color:var(--accent-dim);color:var(--accent);}
+
+  #screen-hub{min-height:100vh;padding-bottom:6vh;}
+  #hub-incident{max-width:38em;margin:4vh auto 5vh;padding:0 20px;
+    text-align:center;line-height:1.95;}
+  #hub-incident em{color:var(--accent);font-style:normal;}
+  .hub-cards{display:flex;flex-wrap:wrap;gap:22px;justify-content:center;
+    max-width:1000px;margin:0 auto;padding:0 20px;}
+  .hub-card{width:250px;height:160px;border:1px solid var(--panel-edge);
+    cursor:pointer;position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s;}
+  .hub-card:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,.5);}
+  .hub-card .bg{position:absolute;inset:0;background-size:cover;background-position:center;}
+  .hub-card .name{position:absolute;left:0;right:0;bottom:0;padding:10px 14px;
+    background:linear-gradient(transparent,rgba(8,12,20,.94));letter-spacing:.2em;}
+  .hub-card.visited::after{content:"다녀옴";position:absolute;top:10px;right:10px;
+    font-size:.68rem;color:var(--ink-dim);border:1px solid var(--panel-edge);
+    background:rgba(8,12,20,.7);padding:2px 8px;letter-spacing:.1em;}
+  #hub-advance-wrap{text-align:center;margin-top:7vh;}
+
+  #screen-scene{min-height:100vh;}
+  #stage-wrap{display:flex;justify-content:center;padding:0 18px;}
+  #stage{position:relative;width:min(1060px,96vw);aspect-ratio:16/9;
+    background-size:cover;background-position:center;
+    border:1px solid var(--panel-edge);overflow:hidden;user-select:none;}
+
+  /* ── 핫스팟: 항상 은은한 마커로 보인다 ── */
+  .hotspot{position:absolute;cursor:pointer;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid transparent;transition:border-color .2s,background .2s;}
+  .hotspot .dot{width:11px;height:11px;border-radius:50%;
+    background:rgba(216,180,90,.85);box-shadow:0 0 0 5px rgba(216,180,90,.14),0 0 16px rgba(216,180,90,.5);
+    animation:pulse 2.6s ease-in-out infinite;pointer-events:none;}
+  .hotspot.done .dot{background:rgba(154,151,136,.55);box-shadow:0 0 0 4px rgba(154,151,136,.10);animation:none;}
+  .hotspot.fresh .dot{background:rgba(201,106,74,.95);box-shadow:0 0 0 6px rgba(201,106,74,.18),0 0 20px rgba(201,106,74,.6);}
+  @keyframes pulse{0%,100%{opacity:.55;transform:scale(1);}50%{opacity:1;transform:scale(1.18);}}
+  .hotspot .tag{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%) translateY(100%);
+    white-space:nowrap;font-size:.72rem;letter-spacing:.08em;color:var(--accent);
+    background:rgba(8,12,20,.88);border:1px solid var(--panel-edge);padding:2px 8px;
+    opacity:0;transition:opacity .18s;pointer-events:none;}
+  .hotspot:hover{border-color:rgba(216,180,90,.55);background:rgba(216,180,90,.07);}
+  .hotspot:hover .tag{opacity:1;}
+  body.show-hotspots .hotspot{border-color:rgba(216,180,90,.45);background:rgba(216,180,90,.06);}
+  body.show-hotspots .hotspot .tag{opacity:1;}
+
+  #textbox{position:absolute;left:3%;right:3%;bottom:4%;background:rgba(8,12,20,.95);
+    border:1px solid var(--panel-edge);padding:16px 22px 18px;line-height:1.85;
+    cursor:pointer;display:none;max-height:74%;overflow-y:auto;}
+  #textbox.open{display:block;}
+  #textbox .speaker{color:var(--accent);letter-spacing:.15em;margin-bottom:8px;font-size:.88rem;}
+  #textbox .continue{color:var(--ink-dim);font-size:.72rem;text-align:right;margin-top:10px;}
+  .ans{margin:0 0 10px;padding-left:12px;border-left:2px solid var(--panel-edge);}
+  .ans .who{color:var(--accent);font-size:.8rem;letter-spacing:.1em;display:block;margin-bottom:2px;}
+
+  #notebook{position:fixed;top:0;right:-400px;bottom:0;width:370px;max-width:90vw;
+    background:var(--panel);border-left:1px solid var(--panel-edge);padding:24px 20px 40px;
+    z-index:40;transition:right .3s;overflow-y:auto;}
+  #notebook.open{right:0;}
+  #notebook h2{letter-spacing:.25em;color:var(--accent);font-size:1rem;margin-bottom:4px;}
+  #notebook .sub{color:var(--ink-dim);font-size:.72rem;letter-spacing:.12em;margin-bottom:18px;}
+  #notebook h3{letter-spacing:.15em;color:var(--ink-dim);font-size:.76rem;
+    margin:24px 0 10px;border-top:1px solid var(--panel-edge);padding-top:13px;}
+  #notebook-close{position:absolute;top:14px;right:14px;width:36px;height:36px;
+    font-size:1.3rem;line-height:1;color:var(--ink);background:transparent;
+    border:1px solid var(--panel-edge);border-radius:4px;cursor:pointer;}
+  .clue-item{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--panel-edge);}
+  .clue-item .n{color:var(--accent);letter-spacing:.1em;margin-bottom:3px;font-size:.9rem;}
+  .clue-item .d{color:var(--ink-dim);font-size:.83rem;line-height:1.7;}
+  .clue-empty{color:var(--ink-dim);font-size:.85rem;line-height:1.8;}
+  .chart{border:1px solid var(--panel-edge);padding:10px 12px;margin-bottom:10px;}
+  .chart .who{color:var(--accent);font-size:.86rem;letter-spacing:.1em;
+    display:flex;justify-content:space-between;align-items:baseline;}
+  .chart .cnt{font-family:monospace;font-size:.78rem;color:var(--ink-dim);}
+  .chart .cnt.zero{color:var(--warm);}
+  .chart ul{list-style:none;margin-top:7px;}
+  .chart li{color:var(--ink-dim);font-size:.8rem;line-height:1.65;padding-left:11px;position:relative;}
+  .chart li::before{content:"·";position:absolute;left:0;color:var(--accent-dim);}
+  .chart .none{color:#5d6b7d;font-size:.78rem;margin-top:6px;}
+
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:-70px;
+    background:var(--panel);border:1px solid var(--accent-dim);color:var(--accent);
+    padding:.7em 1.6em;letter-spacing:.1em;font-size:.86rem;transition:bottom .35s;z-index:50;}
+  #toast.show{bottom:34px;}
+
+  #screen-deduce{min-height:100vh;}
+  #deduce-inner{max-width:36em;margin:0 auto;padding:4vh 20px 10vh;}
+  #deduce-inner .lead{line-height:2;margin-bottom:3vh;}
+  #deduce-clue-note{color:var(--ink-dim);font-size:.86rem;line-height:1.8;margin-bottom:4vh;
+    border-left:2px solid var(--panel-edge);padding-left:14px;}
+  .q-prompt{color:var(--accent);letter-spacing:.1em;margin-bottom:14px;}
+  .opt{display:block;margin:8px 0;padding:10px 16px;border:1px solid var(--panel-edge);
+    color:var(--ink);cursor:pointer;background:none;width:100%;text-align:left;font:inherit;}
+  .opt:hover{background:rgba(216,180,90,.08);}
+  .opt.sel{border-color:var(--accent);color:var(--accent);}
+  #deduce-submit-wrap{text-align:center;margin-top:5vh;}
+
+  #screen-end{min-height:100vh;text-align:center;padding:12vh 20px;}
+  #end-title{color:var(--accent);letter-spacing:.3em;font-size:1.5rem;margin-bottom:4vh;}
+  #end-text{max-width:32em;margin:0 auto 7vh;line-height:2.1;text-align:left;white-space:pre-wrap;}
+
+  #edit-panel{display:none;position:fixed;left:14px;bottom:14px;background:var(--panel);
+    border:1px solid var(--accent-dim);color:var(--accent);padding:10px 14px;
+    font-size:.78rem;line-height:1.7;z-index:60;}
+  #edit-rect{position:absolute;border:1px solid var(--accent);
+    background:rgba(216,180,90,.12);display:none;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     1. 게임 데이터  —  고치는 곳은 여기뿐입니다
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+/*
+  등장인물
+    아내   — 간호사. 플레이어. 사람을 '기록'하는 사람.
+    남편   — 존재감 없는데 온기가 있는 사람. 다정하다.
+    긴머리① 직속후배 — 살갑고 대놓고 친함.             미끼 1
+    긴머리② 다른 팀  — 조용함. 읽을 게 없음.           ★진짜
+    단발①  상사      — 말이 많음. 정보의 출처.
+    단발②  신입      — 최근에 머리 자름. 작년엔 없었음. 미끼 2
+
+  단서가 좁혀지는 순서
+    머리카락 → 셋 (긴①·긴②·단②)
+    네일     → 단②로 확신                 ← 미끼
+    회식명단 → 무너짐, 긴②·단② 둘로      ← 짜증의 정점
+    모순(처음이라면서 화장실을 안 물음) + 온도(0회·회피·대칭) → 긴② 확정
+*/
+
+const GAME = {
+  title: "파티는 즐거워",
+  subtitle: "연말, 우리 집",
+  titleBackground: "https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_070843_edd26813-7bee-46fc-8dc3-7fd5875b7559.png",
+
+  intro: [
+    "나는 간호사다. 사람 보는 게 직업이다.",
+    "환자는 늘 거짓말을 한다. 안 아프다고, 약 먹었다고, 술 안 마신다고.",
+    "그래서 말은 안 듣고 몸을 본다. 손등, 걸음, 눈의 초점, 냄새.",
+    "올해도 파티를 연다. 매년 하던 것이다.",
+    "다른 게 있다면, 남편이 유난히 잘 도와준다는 것.",
+    "그리고 메뉴를 하나 부탁했다는 것. 우리 집에서 안 해먹던 음식.",
+    "일주일이 남았다."
+  ],
+
+  /* ── 인물 (수첩의 인물기록에 자동으로 칸이 생긴다) ── */
+  people: ["긴머리①", "긴머리②", "단발①", "단발②"],
+
+  /* ── 단서 목록 ─────────────────────────────── */
+  clues: [
+    { id:"유니폼",   name:"내 근무복",          desc:"세탁기 안. 나는 매일 이걸 입고 남의 몸을 읽는다. 정작 내 집은 못 읽었다." },
+    { id:"메뉴",     name:"남편이 부탁한 메뉴", desc:"우리 집에서 안 해먹던 이탈리안. 어디서 먹어봤는지는 말하지 않았다." },
+    { id:"거짓말",   name:"남편의 말",          desc:"\"그날 회식은 다 같이 갔었어.\" 아무렇지 않게 말했다." },
+    { id:"머리카락", name:"긴 머리카락",        desc:"뒷좌석이 아니라 조수석에서 나왔다. 회사 사람을 태웠다면 뒷좌석일 텐데." },
+    { id:"명함",     name:"이탈리안 명함",      desc:"겉주머니가 아니라 안주머니에 있었다." },
+    { id:"네일",     name:"네일 팁",            desc:"명함과 같은 자리에서 나왔다. 색이 선명하다." },
+    { id:"냄새",     name:"셔츠의 냄새",        desc:"향수인지 뭔지 모르겠다. 아는 냄새는 아니다." },
+    { id:"인원",     name:"여섯이라는 숫자",    desc:"접시를 세는데 남편이 정정해줬다. 인원을 정확히 알고 있었다." },
+    { id:"동선",     name:"화장실을 묻지 않음", desc:"처음 온 집이면 반드시 묻는다. 긴머리②는 묻지 않고 바로 갔다." },
+    { id:"네일확신", name:"단발②의 손톱",       desc:"주머니에서 나온 그 색이다. 찾았다고 생각했다." },
+    { id:"회식명단", name:"그날의 회식 명단",   desc:"네일은 그날 다 같이 받은 것이었다. 그리고 그날 안 온 사람이 있었다." },
+    { id:"모순",     name:"말과 몸의 어긋남",   desc:"처음이라고 말한 사람이, 이 집 구조를 알고 있었다. 말보다 몸이 정직하다." },
+    { id:"메뉴모순", name:"모른다던 그 맛",     desc:"가본 적 없다던 사람이, 내가 만든 걸 맛보고 그 집 맛을 말했다." },
+    { id:"회피1",    name:"남편의 회피 · 술",   desc:"시켰더니 다른 사람을 시켰다. 한 번은 우연일 수 있다." },
+    { id:"회피2",    name:"남편의 회피 · 사진", desc:"자리를 옮겼다. 두 번 옮겼다." },
+    { id:"회피3",    name:"남편의 회피 · 말",   desc:"화제를 바꿨다. 끝까지 이름을 부르지 않고." },
+    { id:"대칭",     name:"서로 피하는 동선",   desc:"한 사람이 피하면 성격이다. 둘이 서로 피하면 약속이다." }
+  ],
+
+  /* ── 1막 · 집 ───────────────────────────────
+     남편이 집에 있다. 아내는 조사하는 게 아니라 파티 준비를 한다. */
+  act1: {
+    name: "집 · 파티 일주일 전",
+    incident: "남편이 오늘은 집에 있다. 준비할 것이 많다. — <em>순서는 없다.</em>",
+    advance: "── 파티 당일이 되었다",
+    scenes: [
+      {
+        id:"거실", name:"거실",
+        background:"https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_070843_3c0d1925-7df6-44a9-817a-ebe0bd035b51.png",
+        hotspots:[
+          { id:"남편", x:38,y:36,w:26,h:44, label:"남편",
+            speaker:"남편",
+            text:"\"여보, 커피 마실래?\" 늘 그렇듯 다정하다.\n\n맥박을 재듯 습관적으로 본다. 안색 좋음. 손 떨림 없음. 이상 없음.",
+            reveals:["남편2"] },
+          { id:"남편2", x:38,y:36,w:26,h:44, hidden:true, label:"남편 (한 번 더)",
+            speaker:"남편",
+            text:"지난주 회식 얘기가 나왔다. \"그날은 다 같이 갔었어.\"\n\n말할 때 나를 보지 않았다. 그것만 기록해둔다.",
+            givesClue:"거짓말" },
+          { id:"접시", x:5,y:30,w:26,h:44, label:"찬장의 접시",
+            speaker:"찬장",
+            text:"접시 다섯 개를 꺼내는데 남편이 정정한다. \"여섯 개.\"\n\n인원을 정확히 알고 있다.",
+            givesClue:"인원" },
+          { id:"창", x:72,y:18,w:24,h:42, label:"창밖",
+            speaker:"창밖",
+            text:"해가 일찍 진다. 연말이다. 야간 근무 때 보던 그 색이다." }
+        ]
+      },
+      {
+        id:"세탁실", name:"세탁실",
+        background:"https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_070843_c6d02e7a-7c4b-40f4-9e9d-727a8889b520.png",
+        hotspots:[
+          { id:"셔츠", x:62,y:16,w:28,h:48, label:"남편 셔츠",
+            speaker:"셔츠",
+            text:"세탁기에 넣으려다 멈춘다. 낯선 냄새.\n\n냄새로 병을 구분하는 게 내 일인데, 이건 뭔지 모르겠다. 그냥 넣는다.",
+            givesClue:"냄새" },
+          { id:"세탁기", x:18,y:34,w:32,h:46, label:"세탁기",
+            speaker:"세탁기",
+            text:"돌아간다. 일주일 뒤면 아무것도 남지 않을 것이다." },
+          { id:"유니폼", x:4,y:12,w:24,h:24, label:"내 근무복",
+            speaker:"내 근무복",
+            text:"내 스크럽이 개켜져 있다. 명찰이 아직 달린 채로.\n\n하루에 스무 명의 몸을 읽는다. 말과 몸이 어긋나면 몸을 믿으라고 배웠다.",
+            givesClue:"유니폼" },
+          { id:"바구니", x:52,y:70,w:30,h:24, label:"빨래 바구니",
+            speaker:"빨래 바구니",
+            text:"남편 옷이 유난히 많다. 매일 갈아입었다는 뜻이다." }
+        ]
+      },
+      {
+        id:"차", name:"주차장 · 차 안",
+        background:"https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_070843_f047aa79-038b-4bcc-a854-b95054d6f437.png",
+        hotspots:[
+          { id:"조수석", x:44,y:36,w:34,h:44, label:"조수석",
+            speaker:"조수석",
+            text:"장 본 것을 내리다가, 시트에서 긴 머리카락 한 올.\n\n조수석이다. 뒷좌석이 아니라.",
+            givesClue:"머리카락" },
+          { id:"뒷좌석", x:6,y:8,w:26,h:28, label:"뒷좌석",
+            speaker:"뒷좌석",
+            text:"깨끗하다. 사람이 앉은 흔적이 없다.",
+            alt:{ clue:"머리카락",
+                  text:"깨끗하다. 회사 사람을 태웠다면 여기 앉았을 텐데." } },
+          { id:"내비", x:12,y:46,w:24,h:20, label:"내비게이션",
+            speaker:"내비게이션",
+            text:"최근 목적지 목록. 모르는 상호가 하나 섞여 있다." }
+        ]
+      },
+      {
+        id:"옷장", name:"안방 옷장",
+        background:"https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_070843_f7bab40d-e26f-4f40-ad99-8b82694914a0.png",
+        hotspots:[
+          { id:"코트", x:32,y:16,w:28,h:56, label:"남편 코트",
+            speaker:"남편 코트",
+            text:"파티 때 걸 자리를 비운다. 옮기다가 — 주머니가 만져진다.",
+            reveals:["겉주머니"] },
+          { id:"겉주머니", x:32,y:52,w:16,h:20, hidden:true, label:"겉주머니",
+            speaker:"겉주머니",
+            text:"비어 있다.\n\n여기서 그만둬도 된다.",
+            reveals:["안주머니"] },
+          { id:"안주머니", x:46,y:32,w:16,h:20, hidden:true, label:"안주머니",
+            speaker:"안주머니",
+            text:"명함 한 장. 이탈리안 레스토랑. 그리고 네일 팁 하나.\n\n겉주머니는 우연히 들어간다. 안주머니는 아니다.",
+            givesClue:"명함", givesClue2:"네일",
+            reveals:["명함면"] },
+          { id:"명함면", x:60,y:60,w:22,h:22, hidden:true, label:"명함 뒷면",
+            speaker:"명함 뒷면",
+            text:"남편이 부탁한 그 메뉴가, 이 집 대표 메뉴다.",
+            givesClue:"메뉴" },
+          { id:"거울", x:74,y:16,w:22,h:40, label:"거울",
+            speaker:"거울",
+            text:"거울 속에 내가 있다. 코트를 뒤지고 있다." }
+        ]
+      }
+    ]
+  },
+
+  /* ── 2막 · 파티 ─────────────────────────────── */
+  act2: {
+    name: "파티 · 당일",
+    incident: "넷이 왔다. 남편은 다정하다. — <em>회진하듯 돌면 된다.</em>",
+    advance: "── 이제 알겠다",
+    scenes: [
+      {
+        id:"현관", name:"현관 · 저녁 7시",
+        background:"https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_070843_6cd5976b-d4b7-424c-8e80-6af4e5e6f77a.png",
+        hotspots:[
+          { id:"코트1", x:7,y:20,w:18,h:48, label:"긴머리①",
+            speaker:"긴머리① · 직속후배",
+            text:"살갑다. 코트를 건네며 벌써 부엌 얘기를 한다. \"제가 도울게요!\"",
+            chart:{ who:"긴머리①", note:"머리 길다. 도착하자마자 집 안으로 들어옴" },
+            count:"긴머리①" },
+          { id:"코트2", x:29,y:20,w:18,h:48, label:"긴머리②",
+            speaker:"긴머리② · 다른 팀",
+            text:"조용히 코트를 건넨다.\n\n그리고 화장실이 어디냐고 묻지 않는다. 바로 간다.",
+            chart:{ who:"긴머리②", note:"머리 길다. 화장실 위치를 묻지 않음" },
+            givesClue:"동선" },
+          { id:"코트3", x:51,y:20,w:18,h:48, label:"단발①",
+            speaker:"단발① · 상사",
+            text:"들어서자마자 회사 얘기다. 말이 많은 사람이다.",
+            chart:{ who:"단발①", note:"단발. 말이 많음 — 정보의 출처" },
+            count:"단발①" },
+          { id:"코트4", x:73,y:20,w:18,h:48, label:"단발②",
+            speaker:"단발② · 신입",
+            text:"머리가 짧다. 작년엔 없던 얼굴이다.\n\n목덜미 아래 잔머리가 고르지 않다. 자른 지 얼마 안 됐다.",
+            chart:{ who:"단발②", note:"단발 — 최근에 자름. 작년 파티엔 없었음" },
+            count:"단발②" }
+        ]
+      },
+      {
+        id:"거실파티", name:"거실 · 밤 9시",
+        background:"https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_074833_f062dd1a-3e26-4a55-82f1-be47b4f4a185.png",
+        hotspots:[
+          { id:"질문1", x:8,y:70,w:24,h:22, label:"그 레스토랑 얘기를 꺼낸다",
+            interview:{
+              question:"\"그 이탈리안 집, 다들 가보셨어요?\"",
+              answers:[
+                { who:"긴머리①", text:"\"네! 회식 때요. 저 거기 봉골레 진짜 좋아해요.\"",
+                  chart:"회식 갔음 — 본인이 먼저 밝힘" },
+                { who:"긴머리②", text:"\"…아뇨.\"",
+                  chart:"가본 적 없다고 진술" },
+                { who:"단발①", text:"\"그날 회식 거기였지. 네일도 그날 다 같이 받았고. …근데 다 온 건 아니었어.\"",
+                  chart:"회식 갔음. 그날 결원이 있었다고 진술", gives:"회식명단" },
+                { who:"단발②", text:"\"저 그날이 첫 회식이었어요. 네일도 그때 다 같이.\"",
+                  chart:"회식 갔음 — 네일 색의 출처가 설명됨" }
+              ]
+            } },
+          { id:"질문2", x:38,y:70,w:24,h:22, label:"우리 집이 처음인지 묻는다",
+            interview:{
+              question:"\"우리 집 처음이신 분?\"",
+              answers:[
+                { who:"긴머리①", text:"\"저 작년에도 왔었죠~\"",
+                  chart:"작년 파티 참석" },
+                { who:"긴머리②", text:"\"…처음이에요.\"",
+                  chart:"이 집이 처음이라고 진술 ⚠ 화장실을 묻지 않았음" },
+                { who:"단발①", text:"\"난 매년 오지.\"",
+                  chart:"매년 참석" },
+                { who:"단발②", text:"\"저는 처음이에요. 아, 화장실이 어느 쪽이에요?\"",
+                  chart:"처음 — 화장실을 물음 (자연스러움)" }
+              ],
+              requires:"동선", gives:"모순" } },
+          { id:"질문3", x:68,y:70,w:24,h:22, label:"남편 얘기를 꺼낸다",
+            interview:{
+              question:"\"우리 남편, 회사에서 어때요?\"",
+              answers:[
+                { who:"긴머리①", text:"\"선배님 진짜 잘 챙겨주세요. 저 사수예요 사수.\"",
+                  chart:"남편을 '선배님'이라 부름" },
+                { who:"긴머리②", text:"\"잘… 모르겠어요. 팀이 다르라서요.\"",
+                  chart:"남편을 모른다고 진술 ⚠ 그런데 남편이 초대했다" },
+                { who:"단발①", text:"\"성실하지. 요즘 좀 딴생각 하는 것 같긴 한데.\"",
+                  chart:"남편의 최근 변화를 언급" },
+                { who:"단발②", text:"\"다들 좋아하세요. 저한테도 잘해주시고.\"",
+                  chart:"남편에 대해 우호적" }
+              ] } },
+          { id:"관찰자세", x:8,y:14,w:26,h:44, label:"앉은 자세를 본다",
+            speaker:"자세",
+            text:"환자 볼 때처럼 본다.\n\n셋은 등을 기대고 앉아 있다. 한 사람만 무릎 위에 손을 모으고 등을 세우고 있다.\n\n긴장한 사람의 자세다.",
+            chart:{ who:"긴머리②", note:"경직된 자세. 손을 모으고 등을 세움" } }
+        ]
+      },
+      {
+        id:"식탁", name:"식탁 · 밤 8시",
+        background:"https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_070843_a0a97bb6-2c67-4b6c-8b0c-defd7962c313.png",
+        hotspots:[
+          { id:"손톱", x:22,y:66,w:36,h:26, label:"손톱들",
+            speaker:"손톱들",
+            text:"잔을 드는 손들을 본다. 손은 거짓말을 못 한다.\n\n단발②의 손톱이 — 주머니에서 나온 그 색이다.",
+            chart:{ who:"단발②", note:"손톱 색이 네일 팁과 일치" },
+            givesClue:"네일확신" },
+          { id:"음식", x:38,y:38,w:24,h:24, label:"내가 만든 음식",
+            speaker:"내가 만든 음식",
+            text:"남편이 부탁한 메뉴가 식탁 가운데 있다.",
+            alt:{ clue:"모순",
+                  text:"긴머리②가 한 입 먹고 말한다. \"…이 집, 오일을 좀 덜 쓰죠.\"\n\n가본 적 없다던 사람이다.",
+                  givesClue:"메뉴모순" } },
+          { id:"남편식탁", x:70,y:20,w:24,h:44, label:"남편",
+            speaker:"남편",
+            text:"잔을 채워준다. 모두에게. 웃는다.\n\n온기가 골고루 퍼진다. 그게 이 사람이다.",
+            count:"긴머리①" },
+          { id:"잔", x:6,y:24,w:16,h:34, label:"잔에 남은 자국",
+            speaker:"잔",
+            text:"립스틱 자국이 넷 다 다르다. 색만으로는 아무것도 못 좁힌다." }
+        ]
+      },
+      {
+        id:"부엌", name:"부엌과 베란다 · 밤 10시",
+        background:"https://d8j0ntlcm91z4.cloudfront.net/user_3G25CqKekVT9CO1Y16URpjSbK5Z/hf_20260815_070843_2553f3fc-968b-454c-b524-ca268e3a5d7e.png",
+        hotspots:[
+          { id:"실험술", x:6,y:66,w:26,h:26, label:"술을 따르게 시킨다",
+            speaker:"실험 · 술",
+            text:"남편에게 저쪽에 술 좀 따라주라고 한다.\n\n남편이 다른 사람을 시킨다. 한 번.",
+            givesClue:"회피1", count:"긴머리①" },
+          { id:"실험사진", x:36,y:66,w:26,h:26, label:"사진을 찍자고 한다",
+            speaker:"실험 · 사진",
+            text:"다 같이 찍자고 한다. 남편이 자리를 옮긴다.\n\n다시 찍자니 또 옮긴다. 두 번.",
+            givesClue:"회피2", count:"단발②" },
+          { id:"실험화제", x:66,y:66,w:26,h:26, label:"이름을 꺼낸다",
+            speaker:"실험 · 말",
+            text:"저 사람 어느 팀이냐고 묻는다. 화제를 바꾼다.\n\n이름은 끝내 안 나온다. 세 번.",
+            givesClue:"회피3" },
+          { id:"관찰동선", x:56,y:16,w:32,h:42, label:"베란다 쪽을 본다",
+            speaker:"동선",
+            text:"긴머리②도 남편 쪽으로는 가지 않는다. 굳이 돌아서 간다.\n\n한 사람이 피하면 성격이다. 둘이 서로 피하면 약속이다.",
+            chart:{ who:"긴머리②", note:"남편과 서로 피하는 동선" },
+            givesClue:"대칭", requires:"회피3" },
+          { id:"관찰이름", x:6,y:16,w:26,h:38, label:"인계장을 펴본다",
+            speaker:"세어본 것",
+            text:"습관대로 세고 있었다.\n\n세 시간 동안, 한 사람의 이름만 0이다." }
+        ]
+      }
+    ]
+  },
+
+  /* ── 마지막 추리 ───────────────────────────── */
+  deduction: {
+    lead: "파티가 끝나간다. 코트를 내주기 전에, 답을 해야 한다.",
+    prompt: "남편과 함께 있었던 사람은 누구인가?",
+    options: ["긴머리① · 직속후배", "긴머리② · 다른 팀", "단발① · 상사", "단발② · 신입"],
+    routes: {
+      "긴머리① · 직속후배": "오답A",
+      "긴머리② · 다른 팀":  "진실",
+      "단발① · 상사":       "오답B",
+      "단발② · 신입":       "오답C"
+    }
+  },
+
+  /* ── 엔딩 ─────────────────────────────────── */
+  endings: {
+    "진실": { title:"진실",
+      text:"[진실 엔딩]\n\n이름이 불리지 않던 사람이 고개를 든다.\n\n(여기에 진짜 엔딩 텍스트가 들어갑니다.)" },
+    "오답A": { title:"그 다음의 이야기",
+      text:"[오답 엔딩 A]\n\n제일 친했던 사람이 울면서 나간다. 파티가 끝난다.\n\n(여기에 텍스트가 들어갑니다.)" },
+    "오답B": { title:"그 다음의 이야기",
+      text:"[오답 엔딩 B]\n\n상사가 웃지 않는다. 남편의 회사 생활이 끝난다.\n\n(여기에 텍스트가 들어갑니다.)" },
+    "오답C": { title:"그 다음의 이야기",
+      text:"[오답 엔딩 C]\n\n신입이 아무 말도 못 한다. 아무도 나를 보지 않는다.\n\n(여기에 텍스트가 들어갑니다.)" }
+  }
+};
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     화면 구조 (고치지 않아도 됩니다)
+     ═══════════════════════════════════════════════════════════════ -->
+
+<div id="screen-title" class="screen active">
+  <div class="lamp"></div>
+  <h1 id="t-title"></h1>
+  <div class="subtitle" id="t-subtitle"></div>
+  <button class="big" onclick="startIntro()">시 작</button>
+</div>
+
+<div id="screen-intro" class="screen" onclick="nextIntro()">
+  <p id="intro-line"></p>
+  <div class="hint">화면을 클릭하면 계속됩니다</div>
+</div>
+
+<div id="screen-hub" class="screen">
+  <div class="topbar">
+    <div class="place" id="hub-place"></div>
+    <div class="right">
+      <button class="small" onclick="toggleNotebook()">인계장 (<span class="clue-count">0</span>)</button>
+    </div>
+  </div>
+  <p id="hub-incident"></p>
+  <div class="hub-cards" id="hub-cards"></div>
+  <div id="hub-advance-wrap"><button class="big" id="hub-advance"></button></div>
+</div>
+
+<div id="screen-scene" class="screen">
+  <div class="topbar">
+    <div class="place" id="scene-name"></div>
+    <div class="right">
+      <button class="small" onclick="toggleNotebook()">인계장 (<span class="clue-count">0</span>)</button>
+      <button class="small" onclick="enterHub()">돌아간다</button>
+    </div>
+  </div>
+  <div id="stage-wrap">
+    <div id="stage">
+      <div id="edit-rect"></div>
+      <div id="textbox" onclick="closeTextbox()">
+        <div class="speaker" id="tb-speaker"></div>
+        <div id="tb-text"></div>
+        <div class="continue">클릭하여 닫기</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-deduce" class="screen">
+  <div class="topbar">
+    <div class="place">밤 11시</div>
+    <div class="right">
+      <button class="small" onclick="toggleNotebook()">인계장 (<span class="clue-count">0</span>)</button>
+      <button class="small" onclick="enterHub()">아직 아니다</button>
+    </div>
+  </div>
+  <div id="deduce-inner">
+    <p class="lead" id="deduce-lead"></p>
+    <div id="deduce-clue-note"></div>
+    <div class="q-prompt" id="deduce-prompt"></div>
+    <div id="deduce-options"></div>
+    <div id="deduce-submit-wrap"><button class="big" onclick="submitDeduction()">이 사람이다</button></div>
+  </div>
+</div>
+
+<div id="screen-end" class="screen">
+  <h2 id="end-title"></h2>
+  <div id="end-text"></div>
+  <button class="big" onclick="location.reload()">처음부터</button>
+</div>
+
+<div id="notebook">
+  <button id="notebook-close" onclick="closeNotebook()" aria-label="닫기">&times;</button>
+  <h2>인계장</h2>
+  <div class="sub">기록해두지 않으면 다음 근무자가 모른다</div>
+  <h3>관찰 기록</h3>
+  <div id="notebook-list"></div>
+  <h3>인물 차트 · 남편이 이름을 부른 횟수</h3>
+  <div id="notebook-charts"></div>
+</div>
+
+<div id="toast"></div>
+
+<div id="edit-panel">
+  편집 모드 (E 로 종료)<br>화면 위에서 드래그하면 좌표가 나옵니다<br>
+  <span id="edit-out">{ x: -, y: -, w: -, h: - }</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     2. 엔진  —  고치지 않아도 됩니다
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+const state = {
+  clues: new Set(),
+  visited: new Set(),
+  revealed: new Set(),
+  seen: new Set(),
+  counted: new Set(),
+  counts: {},
+  charts: {},
+  act: 1,
+  introIndex: 0,
+  currentScene: null,
+  selected: null
+};
+GAME.people.forEach(p => { state.counts[p] = 0; state.charts[p] = []; });
+
+const $ = id => document.getElementById(id);
+const curAct = () => state.act === 1 ? GAME.act1 : GAME.act2;
+const esc = t => String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const br  = t => esc(t).replace(/\n/g,"<br>");
+
+function showScreen(name){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $("screen-"+name).classList.add("active");
+  window.scrollTo(0,0);
+}
+/* 이미지 배경 위에 어두운 막을 한 겹 씌운다 (가독성 + 분위기) */
+function bgValue(bg, dim){
+  if(bg.includes("gradient(")) return bg;
+  const veil = dim === "card"
+    ? "linear-gradient(rgba(8,12,20,.45),rgba(8,12,20,.78))"
+    : "linear-gradient(rgba(8,12,20,.28),rgba(8,12,20,.58))";
+  return veil + ', url("'+bg+'")';
+}
+
+/* ── 타이틀 · 인트로 ── */
+function initTitle(){
+  $("t-title").textContent = GAME.title;
+  $("t-subtitle").textContent = GAME.subtitle;
+  document.title = GAME.title;
+  if(GAME.titleBackground){
+    const t = $("screen-title");
+    t.style.backgroundImage =
+      'linear-gradient(rgba(8,12,20,.58),rgba(8,12,20,.85)), url("'+GAME.titleBackground+'")';
+    document.querySelector("#screen-title .lamp").style.display = "none";
+  }
+}
+function startIntro(){
+  state.introIndex = 0; showScreen("intro");
+  $("intro-line").textContent = GAME.intro[0] || "";
+  if(!GAME.intro.length) enterHub();
+}
+function nextIntro(){
+  state.introIndex++;
+  if(state.introIndex >= GAME.intro.length){ enterHub(); return; }
+  $("intro-line").textContent = GAME.intro[state.introIndex];
+}
+
+/* ── 허브 ── */
+function enterHub(){
+  closeNotebook();
+  const act = curAct();
+  $("hub-place").textContent = act.name;
+  $("hub-incident").innerHTML = act.incident;
+  const wrap = $("hub-cards"); wrap.innerHTML = "";
+  act.scenes.forEach(sc=>{
+    const card = document.createElement("div");
+    card.className = "hub-card" + (state.visited.has(sc.id) ? " visited" : "");
+    card.innerHTML = '<div class="bg" style="background-image:'+bgValue(sc.background,"card")+'"></div>'
+                   + '<div class="name">'+sc.name+'</div>';
+    card.onclick = ()=>enterScene(sc.id);
+    wrap.appendChild(card);
+  });
+  const btn = $("hub-advance");
+  btn.textContent = act.advance;
+  btn.onclick = state.act === 1 ? goAct2 : openDeduce;
+  showScreen("hub");
+}
+function goAct2(){ state.act = 2; state.visited.clear(); enterHub(); }
+
+/* ── 장면 ── */
+function enterScene(id){
+  const sc = curAct().scenes.find(s=>s.id===id);
+  if(!sc) return;
+  state.currentScene = sc;
+  state.visited.add(id);
+  $("scene-name").textContent = sc.name;
+  renderScene();
+  closeTextbox();
+  closeNotebook();
+  showScreen("scene");
+}
+function visible(h){
+  if(h.hidden && !state.revealed.has(h.id)) return false;
+  const req = h.requires || (h.interview && h.interview.requires);
+  if(req && !state.clues.has(req)) return false;
+  if(h.reveals && h.reveals.every(r=>state.revealed.has(r))) return false;
+  return true;
+}
+function renderScene(){
+  const sc = state.currentScene, stage = $("stage");
+  stage.style.backgroundImage = bgValue(sc.background);
+  stage.querySelectorAll(".hotspot").forEach(h=>h.remove());
+  sc.hotspots.filter(visible).forEach(h=>{
+    const el = document.createElement("div");
+    el.className = "hotspot"
+      + (h.hidden ? " fresh" : "")
+      + (state.seen.has(h.id) ? " done" : "");
+    el.style.left = h.x+"%"; el.style.top = h.y+"%";
+    el.style.width = h.w+"%"; el.style.height = h.h+"%";
+    el.innerHTML = '<span class="dot"></span><span class="tag">'+esc(h.label||"")+'</span>';
+    el.onclick = ()=>activateHotspot(h);
+    stage.appendChild(el);
+  });
+}
+function activateHotspot(h){
+  state.seen.add(h.id);
+
+  if(h.interview){ runInterview(h); renderScene(); return; }
+
+  let text = h.text, g1 = h.givesClue, g2 = h.givesClue2;
+  if(h.alt && state.clues.has(h.alt.clue)){
+    text = h.alt.text;
+    if(h.alt.givesClue !== undefined) g1 = h.alt.givesClue;
+  }
+  $("tb-speaker").textContent = h.speaker || h.label || "";
+  $("tb-text").innerHTML = br(text);
+  $("textbox").classList.add("open");
+  if(g1) gainClue(g1);
+  if(g2) gainClue(g2);
+  if(h.chart) addChart(h.chart.who, h.chart.note);
+  if(h.count && !state.counted.has(h.id)){
+    state.counted.add(h.id);
+    if(state.counts[h.count] !== undefined) state.counts[h.count]++;
+  }
+  if(h.reveals){ h.reveals.forEach(r=>state.revealed.add(r)); renderScene(); }
+}
+
+/* ── 질문하면 넷이 각각 대답한다 ── */
+function runInterview(h){
+  const iv = h.interview;
+  $("tb-speaker").textContent = "내가 물었다";
+  let html = '<div style="margin-bottom:14px;">'+br(iv.question)+'</div>';
+  iv.answers.forEach(a=>{
+    html += '<div class="ans"><span class="who">'+esc(a.who)+'</span>'+br(a.text)+'</div>';
+    if(a.chart) addChart(a.who, a.chart);
+    if(a.gives) gainClue(a.gives);
+  });
+  if(iv.gives) gainClue(iv.gives);
+  $("tb-text").innerHTML = html;
+  $("textbox").classList.add("open");
+}
+
+/* ── 기록 ── */
+function gainClue(id){
+  if(state.clues.has(id)) return;
+  const clue = GAME.clues.find(c=>c.id===id);
+  if(!clue){ console.warn("정의되지 않은 단서:", id); return; }
+  state.clues.add(id);
+  updateClueCount();
+  showToast("인계장에 적었다 — " + clue.name);
+}
+function addChart(who, note){
+  if(!state.charts[who]) return;
+  if(state.charts[who].includes(note)) return;
+  state.charts[who].push(note);
+}
+function updateClueCount(){
+  document.querySelectorAll(".clue-count").forEach(el=>el.textContent = state.clues.size);
+}
+function toggleNotebook(){
+  const nb = $("notebook");
+  if(nb.classList.contains("open")){ closeNotebook(); return; }
+
+  const list = $("notebook-list"); list.innerHTML = "";
+  if(state.clues.size === 0){
+    list.innerHTML = '<p class="clue-empty">아직 적은 게 없다.</p>';
+  } else {
+    GAME.clues.filter(c=>state.clues.has(c.id)).forEach(c=>{
+      const d = document.createElement("div");
+      d.className = "clue-item";
+      d.innerHTML = '<div class="n">'+esc(c.name)+'</div><div class="d">'+esc(c.desc)+'</div>';
+      list.appendChild(d);
+    });
+  }
+
+  const anyCount = Object.values(state.counts).some(v=>v>0);
+  const ch = $("notebook-charts"); ch.innerHTML = "";
+  GAME.people.forEach(p=>{
+    const n = state.counts[p], notes = state.charts[p];
+    const zero = anyCount && n === 0;
+    const d = document.createElement("div");
+    d.className = "chart";
+    d.innerHTML =
+      '<div class="who">'+esc(p)+'<span class="cnt'+(zero?' zero':'')+'">'
+        + (anyCount ? n+"회" : "—") + '</span></div>'
+      + (notes.length
+          ? '<ul>'+notes.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul>'
+          : '<div class="none">기록 없음</div>');
+    ch.appendChild(d);
+  });
+
+  nb.classList.add("open");
+}
+function closeNotebook(){ $("notebook").classList.remove("open"); }
+function closeTextbox(){ $("textbox").classList.remove("open"); }
+
+function showToast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+
+/* ── 추리 ── */
+function openDeduce(){
+  closeNotebook();
+  const d = GAME.deduction;
+  $("deduce-lead").textContent = d.lead;
+  $("deduce-clue-note").textContent = "인계장에 적힌 것 " + state.clues.size + "가지.";
+  $("deduce-prompt").textContent = d.prompt;
+  const wrap = $("deduce-options"); wrap.innerHTML = "";
+  state.selected = null;
+  d.options.forEach(o=>{
+    const b = document.createElement("button");
+    b.className = "opt"; b.textContent = o;
+    b.onclick = ()=>{
+      state.selected = o;
+      wrap.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel"));
+      b.classList.add("sel");
+    };
+    wrap.appendChild(b);
+  });
+  showScreen("deduce");
+}
+function submitDeduction(){
+  if(!state.selected){ showToast("아직 고르지 않았다."); return; }
+  const e = GAME.endings[GAME.deduction.routes[state.selected]];
+  if(!e) return;
+  $("end-title").textContent = e.title;
+  $("end-text").textContent = e.text;
+  showScreen("end");
+}
+
+/* ── 제작용 단축키 (H / E) ── */
+let editMode = false, dragStart = null;
+document.addEventListener("keydown", ev=>{
+  const k = ev.key.toLowerCase();
+  if(k === "h") document.body.classList.toggle("show-hotspots");
+  if(k === "e"){
+    editMode = !editMode;
+    $("edit-panel").style.display = editMode ? "block" : "none";
+    $("edit-rect").style.display = "none";
+  }
+});
+$("stage").addEventListener("mousedown", ev=>{
+  if(!editMode) return;
+  const r = $("stage").getBoundingClientRect();
+  dragStart = { x:(ev.clientX-r.left)/r.width*100, y:(ev.clientY-r.top)/r.height*100 };
+});
+$("stage").addEventListener("mousemove", ev=>{
+  if(!editMode || !dragStart) return;
+  const r = $("stage").getBoundingClientRect();
+  const x2 = (ev.clientX-r.left)/r.width*100, y2 = (ev.clientY-r.top)/r.height*100;
+  const x = Math.min(dragStart.x,x2), y = Math.min(dragStart.y,y2);
+  const w = Math.abs(x2-dragStart.x), h = Math.abs(y2-dragStart.y);
+  const rect = $("edit-rect");
+  rect.style.display = "block";
+  rect.style.left = x+"%"; rect.style.top = y+"%";
+  rect.style.width = w+"%"; rect.style.height = h+"%";
+  $("edit-out").textContent =
+    "{ x: "+x.toFixed(0)+", y: "+y.toFixed(0)+", w: "+w.toFixed(0)+", h: "+h.toFixed(0)+" }";
+});
+document.addEventListener("mouseup", ()=>{ dragStart = null; });
+
+initTitle();
+</script>
+</body>
+</html>
